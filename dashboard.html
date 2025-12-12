@@ -1,303 +1,395 @@
  // ====================
-        // GLOBAL VARIABLES
         // ====================
-        let currentUser = null;
-        let userTasks = [];
-        let userArticles = [];
-        let userReport = "";
-        let autoSaveInterval;
-        let lastSaveTime = new Date();
-        let isSaving = false;
+// GLOBAL VARIABLES
+// ====================
+let currentUser = null;
+let userTasks = [];
+let userArticles = [];
+let userReport = "";
+let autoSaveInterval;
+let lastSaveTime = new Date();
+let isSaving = false;
 
-        // ====================
-        // INITIALIZATION
-        // ====================
-        window.onload = function() {
-            // Check if user is logged in
-            const storedUser = localStorage.getItem('currentUser');
-            if (!storedUser) {
-                window.location.href = 'index.html';
-                return;
+// ====================
+// INITIALIZATION
+// ====================
+window.onload = function() {
+    // Check if user is logged in
+    const storedUser = localStorage.getItem('currentUser');
+    if (!storedUser) {
+        window.location.href = 'index.html';
+        return;
+    }
+
+    try {
+        currentUser = JSON.parse(storedUser);
+    } catch (e) {
+        console.error('Error parsing user data:', e);
+        window.location.href = 'index.html';
+        return;
+    }
+
+    // Initialize all components
+    loadUserData();
+    updateUI();
+    setupAutoSave();
+    updateLastSavedTime();
+    checkPeerEvaluationReminder();
+    
+    // Set current date
+    const currentDateElement = document.getElementById('currentDate');
+    if (currentDateElement) {
+        currentDateElement.textContent = new Date().toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    }
+
+    // Set default tasks if none exist
+    if (userTasks.length === 0) {
+        resetToDefaultTasks();
+    }
+
+    // Setup auto-save indicator
+    setupSaveIndicator();
+
+    // Setup beforeunload warning
+    window.addEventListener('beforeunload', function (e) {
+        if (hasUnsavedChanges()) {
+            e.preventDefault();
+            e.returnValue = 'You have unsaved changes! Are you sure you want to leave?';
+        }
+    });
+
+    // Initialize dashboard as active section
+    showSection('dashboard');
+};
+
+// ====================
+// AUTO-SAVE SYSTEM
+// ====================
+function setupAutoSave() {
+    // Clear any existing interval
+    if (autoSaveInterval) {
+        clearInterval(autoSaveInterval);
+    }
+
+    // Auto-save every 30 seconds
+    autoSaveInterval = setInterval(() => {
+        if (!isSaving && hasUnsavedChanges()) {
+            saveAllData();
+        }
+    }, 30000);
+
+    // Auto-save when report changes
+    const reportEditor = document.getElementById('reportEditor');
+    if (reportEditor) {
+        reportEditor.addEventListener('input', function() {
+            updateWordCount();
+            userReport = this.value;
+            scheduleSave();
+        });
+    }
+
+    // Auto-save when tasks change
+    const taskList = document.getElementById('taskList');
+    if (taskList) {
+        taskList.addEventListener('change', function() {
+            scheduleSave();
+        });
+    }
+
+    // Add input listeners for article fields
+    ['articleTitle', 'articleUrl', 'articleAuthors', 'articleCategory'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('change', scheduleSave);
+        }
+    });
+}
+
+function setupSaveIndicator() {
+    // Clear any existing interval
+    if (window.saveIndicatorInterval) {
+        clearInterval(window.saveIndicatorInterval);
+    }
+
+    window.saveIndicatorInterval = setInterval(() => {
+        const now = new Date();
+        const diff = Math.floor((now - lastSaveTime) / 1000);
+        
+        const saveStatus = document.getElementById('saveStatus');
+        const saveIndicator = document.getElementById('saveIndicator');
+        const autoSaveIndicator = document.getElementById('autoSaveIndicator');
+        const lastSavedElement = document.getElementById('lastSaved');
+        
+        if (saveStatus) {
+            if (diff < 30) {
+                saveStatus.textContent = 'Saved just now';
+                if (saveIndicator) saveIndicator.className = 'auto-save-indicator saved';
+            } else if (diff < 60) {
+                saveStatus.textContent = 'Saved ' + diff + 's ago';
+                if (saveIndicator) saveIndicator.className = 'auto-save-indicator';
+            } else {
+                saveStatus.textContent = 'Saving soon...';
+                if (saveIndicator) saveIndicator.className = 'auto-save-indicator';
             }
-
-            currentUser = JSON.parse(storedUser);
-            loadUserData();
-            updateUI();
-            setupAutoSave();
-            updateLastSavedTime();
-            checkPeerEvaluationReminder();
-            
-            // Set current date
-            document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-
-            // Set default tasks if none exist
-            if (userTasks.length === 0) {
-                resetToDefaultTasks();
-            }
-
-            // Setup auto-save indicator
-            setupSaveIndicator();
-
-            // Setup beforeunload warning
-            window.addEventListener('beforeunload', function (e) {
-                // Only warn if there's unsaved changes
-                if (hasUnsavedChanges()) {
-                    e.preventDefault();
-                    e.returnValue = 'You have unsaved changes! Are you sure you want to leave?';
-                    return e.returnValue;
-                }
-            });
-        };
-
-        // ====================
-        // AUTO-SAVE SYSTEM
-        // ====================
-        function setupAutoSave() {
-            // Auto-save every 30 seconds
-            autoSaveInterval = setInterval(() => {
-                if (!isSaving) {
-                    saveAllData();
-                }
-            }, 30000);
-
-            // Auto-save when report changes
-            document.getElementById('reportEditor').addEventListener('input', function() {
-                updateWordCount();
-                // Mark as needing save
-                userReport = this.value;
-            });
-
-            // Auto-save when tasks change
-            document.getElementById('taskList').addEventListener('change', function() {
-                scheduleSave();
-            });
         }
 
-        function setupSaveIndicator() {
-            setInterval(() => {
-                const now = new Date();
-                const diff = Math.floor((now - lastSaveTime) / 1000);
-                
-                if (diff < 30) {
-                    document.getElementById('saveStatus').textContent = 'Saved just now';
-                    document.getElementById('saveIndicator').className = 'auto-save-indicator saved';
-                } else if (diff < 60) {
-                    document.getElementById('saveStatus').textContent = 'Saved ' + diff + 's ago';
-                    document.getElementById('saveIndicator').className = 'auto-save-indicator';
-                } else {
-                    document.getElementById('saveStatus').textContent = 'Saving soon...';
-                    document.getElementById('saveIndicator').className = 'auto-save-indicator';
-                }
-
-                // Update data status indicator
-                const indicator = document.getElementById('autoSaveIndicator');
-                if (isSaving) {
-                    indicator.className = 'pulse';
-                    indicator.style.color = 'var(--warning)';
-                } else if (diff < 10) {
-                    indicator.className = '';
-                    indicator.style.color = 'var(--success)';
-                } else {
-                    indicator.className = '';
-                    indicator.style.color = 'var(--accent-blue)';
-                }
-            }, 1000);
-        }
-
-        function scheduleSave() {
-            if (!isSaving) {
-                isSaving = true;
-                setTimeout(() => {
-                    saveAllData();
-                    isSaving = false;
-                }, 1000);
+        // Update auto save indicator
+        if (autoSaveIndicator) {
+            if (isSaving) {
+                autoSaveIndicator.className = 'pulse';
+                autoSaveIndicator.style.color = 'var(--warning)';
+            } else if (diff < 10) {
+                autoSaveIndicator.className = '';
+                autoSaveIndicator.style.color = 'var(--success)';
+            } else {
+                autoSaveIndicator.className = '';
+                autoSaveIndicator.style.color = 'var(--accent-blue)';
             }
         }
 
-        function updateLastSavedTime() {
-            lastSaveTime = new Date();
+        // Update last saved time
+        if (lastSavedElement && diff < 60) {
             const timeStr = lastSaveTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            document.getElementById('lastSaved').textContent = timeStr;
+            lastSavedElement.textContent = `Last saved: ${timeStr}`;
         }
+    }, 1000);
+}
 
-        function hasUnsavedChanges() {
-            // Check if report editor has unsaved changes
-            const editorContent = document.getElementById('reportEditor').value;
-            return editorContent !== userReport;
+function scheduleSave() {
+    if (!isSaving) {
+        isSaving = true;
+        setTimeout(() => {
+            saveAllData();
+            isSaving = false;
+        }, 1000);
+    }
+}
+
+function updateLastSavedTime() {
+    lastSaveTime = new Date();
+    const lastSavedElement = document.getElementById('lastSaved');
+    if (lastSavedElement) {
+        const timeStr = lastSaveTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        lastSavedElement.textContent = `Last saved: ${timeStr}`;
+    }
+}
+
+function hasUnsavedChanges() {
+    const editor = document.getElementById('reportEditor');
+    if (!editor) return false;
+    return editor.value !== userReport;
+}
+
+// ====================
+// DATA MANAGEMENT
+// ====================
+function loadUserData() {
+    if (!currentUser || !currentUser.id) {
+        console.error('No current user found');
+        return;
+    }
+    
+    const userId = currentUser.id;
+    
+    // Load tasks
+    try {
+        const storedTasks = localStorage.getItem(`tasks_${userId}`);
+        userTasks = storedTasks ? JSON.parse(storedTasks) : [];
+    } catch (e) {
+        console.error('Error loading tasks:', e);
+        userTasks = [];
+    }
+    
+    // Load articles
+    try {
+        const storedArticles = localStorage.getItem(`articles_${userId}`);
+        userArticles = storedArticles ? JSON.parse(storedArticles) : [];
+    } catch (e) {
+        console.error('Error loading articles:', e);
+        userArticles = [];
+    }
+    
+    // Load report
+    try {
+        const storedReport = localStorage.getItem(`report_${userId}`);
+        userReport = storedReport || "";
+    } catch (e) {
+        console.error('Error loading report:', e);
+        userReport = "";
+    }
+    
+    // Check for backup
+    const backup = localStorage.getItem(`backup_${userId}`);
+    if (backup && userTasks.length === 0 && userArticles.length === 0 && userReport === "") {
+        if (confirm('Found a backup of your data. Restore it?')) {
+            restoreFromBackup();
+            return;
         }
+    }
+    
+    updateTaskDisplay();
+    updateArticlesDisplay();
+    updateReportDisplay();
+    updateDataStats();
+}
 
-        // ====================
-        // DATA MANAGEMENT
-        // ====================
-        function loadUserData() {
-            const userId = currentUser.id;
-            
-            // Load tasks
-            const storedTasks = localStorage.getItem(`tasks_${userId}`);
-            userTasks = storedTasks ? JSON.parse(storedTasks) : [];
-            
-            // Load articles
-            const storedArticles = localStorage.getItem(`articles_${userId}`);
-            userArticles = storedArticles ? JSON.parse(storedArticles) : [];
-            
-            // Load report
-            const storedReport = localStorage.getItem(`report_${userId}`);
-            userReport = storedReport || "";
-            
-            // Check for backup
-            const backup = localStorage.getItem(`backup_${userId}`);
-            if (backup && !storedReport && !storedTasks && !storedArticles) {
-                if (confirm('Found a backup of your data. Restore it?')) {
-                    restoreFromBackup();
-                    return;
-                }
+function saveAllData() {
+    if (!currentUser || !currentUser.id) {
+        console.error('No current user to save data for');
+        return;
+    }
+    
+    const userId = currentUser.id;
+    
+    // Save current report from editor
+    const editor = document.getElementById('reportEditor');
+    if (editor) {
+        userReport = editor.value;
+    }
+    
+    try {
+        // Save to localStorage
+        localStorage.setItem(`tasks_${userId}`, JSON.stringify(userTasks));
+        localStorage.setItem(`articles_${userId}`, JSON.stringify(userArticles));
+        localStorage.setItem(`report_${userId}`, userReport);
+        
+        // Create backup
+        createBackup();
+        
+        // Update UI
+        updateLastSavedTime();
+        showNotification('All data saved successfully!', 'success');
+        updateDashboardStats();
+        updateDataStats();
+    } catch (e) {
+        console.error('Error saving data:', e);
+        showNotification('Error saving data: ' + e.message, 'warning');
+    }
+}
+
+function saveUserData() {
+    saveAllData();
+}
+
+// ====================
+// BACKUP & RECOVERY
+// ====================
+function createBackup() {
+    if (!currentUser || !currentUser.id) return;
+    
+    const userId = currentUser.id;
+    const backupData = {
+        tasks: userTasks,
+        articles: userArticles,
+        report: userReport,
+        timestamp: new Date().toISOString(),
+        browserId: localStorage.getItem('browserId') || 'unknown'
+    };
+    
+    localStorage.setItem(`backup_${userId}`, JSON.stringify(backupData));
+    
+    // Keep only last 5 backups
+    let backupCount = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith(`backup_${userId}_`)) {
+            backupCount++;
+            if (backupCount > 5) {
+                localStorage.removeItem(key);
             }
+        }
+    }
+    
+    console.log('Backup created at:', backupData.timestamp);
+}
+
+function restoreFromBackup() {
+    if (!currentUser || !currentUser.id) return;
+    
+    const userId = currentUser.id;
+    const backup = localStorage.getItem(`backup_${userId}`);
+    
+    if (!backup) {
+        showNotification('No backup found to restore!', 'warning');
+        return;
+    }
+    
+    if (confirm('Restore from backup? This will replace your current data.')) {
+        try {
+            const backupData = JSON.parse(backup);
+            userTasks = backupData.tasks || [];
+            userArticles = backupData.articles || [];
+            userReport = backupData.report || '';
             
+            saveAllData();
             updateTaskDisplay();
             updateArticlesDisplay();
             updateReportDisplay();
-            updateDataStats();
+            showNotification('Data restored from backup!', 'success');
+        } catch (e) {
+            showNotification('Error restoring backup: ' + e.message, 'warning');
         }
+    }
+}
 
-        function saveAllData() {
-            const userId = currentUser.id;
-            
-            // Save current report from editor
-            userReport = document.getElementById('reportEditor').value;
-            
-            // Save to localStorage
-            localStorage.setItem(`tasks_${userId}`, JSON.stringify(userTasks));
-            localStorage.setItem(`articles_${userId}`, JSON.stringify(userArticles));
-            localStorage.setItem(`report_${userId}`, userReport);
-            
-            // Create backup
-            createBackup();
-            
-            // Update UI
-            updateLastSavedTime();
-            showNotification('All data saved successfully!', 'success');
-            updateDashboardStats();
-        }
+function updateDataStats() {
+    const statsDiv = document.getElementById('dataStats');
+    if (!statsDiv) return;
+    
+    const reportSize = new Blob([userReport]).size;
+    const tasksSize = new Blob([JSON.stringify(userTasks)]).size;
+    const articlesSize = new Blob([JSON.stringify(userArticles)]).size;
+    const totalSize = (reportSize + tasksSize + articlesSize) / 1024; // KB
+    
+    const backup = localStorage.getItem(`backup_${currentUser.id}`);
+    const hasBackup = backup ? '✅' : '❌';
+    
+    statsDiv.innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+            <div>
+                <div style="color: var(--accent-light); font-size: 12px;">Report Size</div>
+                <div style="color: var(--accent-blue);">${(reportSize / 1024).toFixed(2)} KB</div>
+            </div>
+            <div>
+                <div style="color: var(--accent-light); font-size: 12px;">Tasks</div>
+                <div style="color: var(--accent-blue);">${userTasks.length}</div>
+            </div>
+            <div>
+                <div style="color: var(--accent-light); font-size: 12px;">Articles</div>
+                <div style="color: var(--accent-blue);">${userArticles.length}</div>
+            </div>
+            <div>
+                <div style="color: var(--accent-light); font-size: 12px;">Backup</div>
+                <div style="color: var(--accent-blue);">${hasBackup}</div>
+            </div>
+        </div>
+        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <div style="color: var(--accent-light); font-size: 12px;">Total Storage Used</div>
+            <div style="color: var(--accent-blue); font-size: 18px; font-weight: bold;">${totalSize.toFixed(2)} KB</div>
+            <div style="font-size: 11px; color: var(--accent-light);">
+                ${((totalSize / (5 * 1024)) * 100).toFixed(1)}% of 5MB limit
+            </div>
+        </div>
+    `;
+}
 
-        function saveUserData() {
-            saveAllData();
-        }
-
-        // ====================
-        // BACKUP & RECOVERY
-        // ====================
-        function createBackup() {
-            const userId = currentUser.id;
-            const backupData = {
-                tasks: userTasks,
-                articles: userArticles,
-                report: userReport,
-                timestamp: new Date().toISOString(),
-                browserId: localStorage.getItem('browserId') || 'unknown'
-            };
-            
-            localStorage.setItem(`backup_${userId}`, JSON.stringify(backupData));
-            
-            // Keep only last 5 backups
-            let backupCount = 0;
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key.startsWith(`backup_${userId}_`)) {
-                    backupCount++;
-                    if (backupCount > 5) {
-                        localStorage.removeItem(key);
-                    }
-                }
-            }
-            
-            console.log('Backup created at:', backupData.timestamp);
-        }
-
-        function restoreFromBackup() {
-            const userId = currentUser.id;
-            const backup = localStorage.getItem(`backup_${userId}`);
-            
-            if (!backup) {
-                showNotification('No backup found to restore!', 'warning');
-                return;
-            }
-            
-            if (confirm('Restore from backup? This will replace your current data.')) {
-                try {
-                    const backupData = JSON.parse(backup);
-                    userTasks = backupData.tasks || [];
-                    userArticles = backupData.articles || [];
-                    userReport = backupData.report || '';
-                    
-                    saveAllData();
-                    updateTaskDisplay();
-                    updateArticlesDisplay();
-                    updateReportDisplay();
-                    showNotification('Data restored from backup!', 'success');
-                } catch (e) {
-                    showNotification('Error restoring backup: ' + e.message, 'warning');
-                }
-            }
-        }
-
-        function updateDataStats() {
-            const statsDiv = document.getElementById('dataStats');
-            if (!statsDiv) return;
-            
-            const reportSize = new Blob([userReport]).size;
-            const tasksSize = new Blob([JSON.stringify(userTasks)]).size;
-            const articlesSize = new Blob([JSON.stringify(userArticles)]).size;
-            const totalSize = (reportSize + tasksSize + articlesSize) / 1024; // KB
-            
-            const backup = localStorage.getItem(`backup_${currentUser.id}`);
-            const hasBackup = backup ? '✅' : '❌';
-            
-            statsDiv.innerHTML = `
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-                    <div>
-                        <div style="color: var(--accent-light); font-size: 12px;">Report Size</div>
-                        <div style="color: var(--accent-blue);">${(reportSize / 1024).toFixed(2)} KB</div>
-                    </div>
-                    <div>
-                        <div style="color: var(--accent-light); font-size: 12px;">Tasks</div>
-                        <div style="color: var(--accent-blue);">${userTasks.length}</div>
-                    </div>
-                    <div>
-                        <div style="color: var(--accent-light); font-size: 12px;">Articles</div>
-                        <div style="color: var(--accent-blue);">${userArticles.length}</div>
-                    </div>
-                    <div>
-                        <div style="color: var(--accent-light); font-size: 12px;">Backup</div>
-                        <div style="color: var(--accent-blue);">${hasBackup}</div>
-                    </div>
-                </div>
-                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
-                    <div style="color: var(--accent-light); font-size: 12px;">Total Storage Used</div>
-                    <div style="color: var(--accent-blue); font-size: 18px; font-weight: bold;">${totalSize.toFixed(2)} KB</div>
-                    <div style="font-size: 11px; color: var(--accent-light);">
-                        ${((totalSize / (5 * 1024)) * 100).toFixed(1)}% of 5MB limit
-                    </div>
-                </div>
-            `;
-        }
-
-        function showStorageInfo() {
-            let totalSize = 0;
-            let itemCount = 0;
-            
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                const value = localStorage.getItem(key);
-                totalSize += (key.length + value.length) * 2; // Approximate size in bytes
-                itemCount++;
-            }
-            
-            const info = `
+function showStorageInfo() {
+    let totalSize = 0;
+    let itemCount = 0;
+    
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        const value = localStorage.getItem(key);
+        totalSize += (key.length + value.length) * 2; // Approximate size in bytes
+        itemCount++;
+    }
+    
+    const info = `
 💾 BROWSER STORAGE INFORMATION:
 
 Total items: ${itemCount}
@@ -314,863 +406,1016 @@ Usage: ${((totalSize / (5 * 1024 * 1024)) * 100).toFixed(1)}%
 - Data is browser-specific
 - Export regularly for safety
 - Use same browser always
-            `;
-            
-            alert(info);
-        }
+    `;
+    
+    alert(info);
+}
 
-        // ====================
-        // UI UPDATES
-        // ====================
-        function updateUI() {
-            // Update user info
-            document.getElementById('userInfoDisplay').innerHTML = `
-                <h3>${currentUser.name}</h3>
-                <p>${currentUser.email}</p>
-                <span class="user-role ${currentUser.role}">${currentUser.role.toUpperCase()}</span>
-                <div class="data-status">
-                    <span class="pulse" id="autoSaveIndicator">●</span>
-                    <span id="lastSaved">Just now</span>
+// ====================
+// UI UPDATES
+// ====================
+function updateUI() {
+    if (!currentUser) return;
+    
+    // Update user info
+    const userInfoDisplay = document.getElementById('userInfoDisplay');
+    if (userInfoDisplay) {
+        userInfoDisplay.innerHTML = `
+            <h3>${currentUser.name || 'User'}</h3>
+            <p>${currentUser.email || ''}</p>
+            <span class="user-role ${currentUser.role || 'user'}">${(currentUser.role || 'user').toUpperCase()}</span>
+            <div class="data-status">
+                <span class="pulse" id="autoSaveIndicator">●</span>
+                <span id="lastSaved">Just now</span>
+            </div>
+        `;
+    }
+
+    // Show user role
+    const userRoleDisplay = document.getElementById('userRoleDisplay');
+    if (userRoleDisplay) {
+        userRoleDisplay.textContent = currentUser.role === 'admin' ? 
+            'Admin (can view all data)' : 'Researcher (private workspace)';
+    }
+
+    // Show/hide admin menu items
+    const adminMenuItems = document.querySelectorAll('.admin-only');
+    adminMenuItems.forEach(item => {
+        item.style.display = currentUser.isAdmin ? 'flex' : 'none';
+    });
+
+    // Update dashboard stats
+    updateDashboardStats();
+    updateDataStats();
+}
+
+function updateDashboardStats() {
+    // Task progress
+    const completed = userTasks.filter(t => t.completed).length;
+    const total = userTasks.length;
+    const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+    
+    const taskProgressElement = document.getElementById('taskProgress');
+    if (taskProgressElement) {
+        taskProgressElement.innerHTML = `
+            <div style="margin: 10px 0;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span>Progress</span>
+                    <span>${progress}%</span>
                 </div>
-            `;
-
-            // Show user role
-            document.getElementById('userRoleDisplay').textContent = currentUser.role === 'admin' ? 'Admin (can view all data)' : 'Researcher (private workspace)';
-
-            // Show/hide admin menu item
-            const adminMenuItems = document.querySelectorAll('.admin-only');
-            adminMenuItems.forEach(item => {
-                item.style.display = currentUser.isAdmin ? 'flex' : 'none';
-            });
-
-            // Update dashboard stats
-            updateDashboardStats();
-            updateDataStats();
-        }
-
-        function updateDashboardStats() {
-            // Task progress
-            const completed = userTasks.filter(t => t.completed).length;
-            const total = userTasks.length;
-            const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
-            
-            document.getElementById('taskProgress').innerHTML = `
-                <div style="margin: 10px 0;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                        <span>Progress</span>
-                        <span>${progress}%</span>
-                    </div>
-                    <div style="background: var(--tertiary-dark); height: 10px; border-radius: 5px; overflow: hidden;">
-                        <div style="background: var(--accent-blue); width: ${progress}%; height: 100%; transition: width 0.5s;"></div>
-                    </div>
-                    <div style="margin-top: 10px; font-size: 12px; color: var(--accent-light);">
-                        ${completed} of ${total} tasks completed
-                    </div>
+                <div style="background: var(--tertiary-dark); height: 10px; border-radius: 5px; overflow: hidden;">
+                    <div style="background: var(--accent-blue); width: ${progress}%; height: 100%; transition: width 0.5s;"></div>
                 </div>
-            `;
-
-            // Report status
-            const wordCount = userReport.split(/\s+/).filter(word => word.length > 0).length;
-            const pageCount = Math.ceil(wordCount / 300);
-            const progressPercent = Math.min(100, (wordCount / 3000) * 100);
-            
-            document.getElementById('reportStatus').innerHTML = `
-                <div style="margin: 10px 0;">
-                    <div style="font-size: 24px; color: var(--accent-blue); font-weight: bold;">
-                        ${wordCount} words
-                    </div>
-                    <div style="font-size: 14px; color: var(--accent-light);">
-                        Approximately ${pageCount} of 10 pages
-                    </div>
-                    <div style="margin-top: 10px;">
-                        <div style="background: var(--tertiary-dark); height: 8px; border-radius: 4px; overflow: hidden;">
-                            <div style="background: var(--accent-blue); width: ${progressPercent}%; height: 100%;"></div>
-                        </div>
-                        <div style="font-size: 12px; margin-top: 5px;">
-                            ${wordCount >= 3000 ? '✅ Target reached!' : `Need ${3000 - wordCount} more words`}
-                        </div>
-                    </div>
+                <div style="margin-top: 10px; font-size: 12px; color: var(--accent-light);">
+                    ${completed} of ${total} tasks completed
                 </div>
-            `;
+            </div>
+        `;
+    }
 
-            // Literature stats
-            const categories = {};
-            userArticles.forEach(article => {
-                categories[article.category] = (categories[article.category] || 0) + 1;
-            });
-            
-            let categoriesText = '';
-            for (const [cat, count] of Object.entries(categories)) {
-                categoriesText += `${cat}: ${count}<br>`;
-            }
-            
-            document.getElementById('literatureStats').innerHTML = `
-                <div style="margin: 10px 0;">
-                    <div style="font-size: 24px; color: var(--accent-blue); font-weight: bold;">
-                        ${userArticles.length} articles
+    // Report status
+    const wordCount = userReport.split(/\s+/).filter(word => word.length > 0).length;
+    const pageCount = Math.ceil(wordCount / 300);
+    const progressPercent = Math.min(100, (wordCount / 3000) * 100);
+    
+    const reportStatusElement = document.getElementById('reportStatus');
+    if (reportStatusElement) {
+        reportStatusElement.innerHTML = `
+            <div style="margin: 10px 0;">
+                <div style="font-size: 24px; color: var(--accent-blue); font-weight: bold;">
+                    ${wordCount} words
+                </div>
+                <div style="font-size: 14px; color: var(--accent-light);">
+                    Approximately ${pageCount} of 10 pages
+                </div>
+                <div style="margin-top: 10px;">
+                    <div style="background: var(--tertiary-dark); height: 8px; border-radius: 4px; overflow: hidden;">
+                        <div style="background: var(--accent-blue); width: ${progressPercent}%; height: 100%;"></div>
                     </div>
-                    <div style="font-size: 12px; color: var(--accent-light); margin-top: 5px;">
-                        ${categoriesText || 'No articles categorized yet'}
+                    <div style="font-size: 12px; margin-top: 5px;">
+                        ${wordCount >= 3000 ? '✅ Target reached!' : `Need ${3000 - wordCount} more words`}
                     </div>
                 </div>
-            `;
+            </div>
+        `;
+    }
 
-            // Peer evaluation reminder
-            const deadline = new Date('2026-01-23');
-            const today = new Date();
-            const daysUntilDeadline = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
-            
-            let reminderText = '';
-            let reminderColor = 'var(--accent-blue)';
-            
-            if (daysUntilDeadline <= 0) {
-                reminderText = '⚠️ Peer evaluations are overdue!';
-                reminderColor = 'var(--warning)';
-            } else if (daysUntilDeadline <= 7) {
-                reminderText = `⚠️ Peer evaluations due in ${daysUntilDeadline} days!`;
-                reminderColor = 'var(--warning)';
-            } else if (daysUntilDeadline <= 14) {
-                reminderText = `ℹ️ Peer evaluations due in ${daysUntilDeadline} days`;
-                reminderColor = 'var(--accent-blue)';
-            } else {
-                reminderText = `✅ Peer evaluations due in ${daysUntilDeadline} days`;
-                reminderColor = 'var(--success)';
-            }
-            
-            document.getElementById('peerEvalReminder').innerHTML = `
-                <div style="margin: 10px 0;">
-                    <div style="color: ${reminderColor}; font-weight: bold;">
-                        ${reminderText}
-                    </div>
-                    <div style="font-size: 12px; color: var(--accent-light); margin-top: 5px;">
-                        Due: January 23, 2026
-                    </div>
-                    <div style="margin-top: 15px; font-size: 11px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px;">
-                        <strong>Task Support & Involvement:</strong>
-                        <br>• Help teammates with their sections
-                        <br>• Participate in group discussions
-                        <br>• Provide constructive feedback
-                    </div>
+    // Literature stats
+    const categories = {};
+    userArticles.forEach(article => {
+        categories[article.category] = (categories[article.category] || 0) + 1;
+    });
+    
+    let categoriesText = '';
+    for (const [cat, count] of Object.entries(categories)) {
+        categoriesText += `${cat}: ${count}<br>`;
+    }
+    
+    const literatureStatsElement = document.getElementById('literatureStats');
+    if (literatureStatsElement) {
+        literatureStatsElement.innerHTML = `
+            <div style="margin: 10px 0;">
+                <div style="font-size: 24px; color: var(--accent-blue); font-weight: bold;">
+                    ${userArticles.length} articles
                 </div>
-            `;
-        }
+                <div style="font-size: 12px; color: var(--accent-light); margin-top: 5px;">
+                    ${categoriesText || 'No articles categorized yet'}
+                </div>
+            </div>
+        `;
+    }
 
-        // ====================
-        // SECTION NAVIGATION
-        // ====================
-        function showSection(sectionId) {
-            // Save current data before switching sections
-            if (hasUnsavedChanges()) {
-                saveReport();
-            }
-            
-            // Hide all sections
-            document.querySelectorAll('.content-area').forEach(section => {
-                section.classList.remove('active');
-            });
-            
-            // Remove active class from all nav items
-            document.querySelectorAll('.nav-menu a').forEach(link => {
-                link.classList.remove('active');
-            });
-            
-            // Show selected section
-            document.getElementById(sectionId).classList.add('active');
-            
-            // Update active nav item
-            document.querySelector(`.nav-menu a[href="#${sectionId}"]`).classList.add('active');
-            
-            // Update section title
-            const titles = {
-                'dashboard': 'Dashboard',
-                'report': 'Report Editor',
-                'tasks': 'Task Manager',
-                'literature': 'Literature Repository',
-                'chemistry': 'Chemistry Toolkit',
-                'references': 'ACS Reference Generator',
-                'backup': 'Data Backup',
-                'admin': 'Admin Panel'
-            };
-            
-            document.getElementById('sectionTitle').textContent = titles[sectionId];
-            
-            // Special handling for admin section
-            if (sectionId === 'admin' && currentUser.isAdmin) {
-                loadAdminView();
-            }
-        }
+    // Peer evaluation reminder
+    const deadline = new Date('2026-01-23');
+    const today = new Date();
+    const daysUntilDeadline = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
+    
+    let reminderText = '';
+    let reminderColor = 'var(--accent-blue)';
+    
+    if (daysUntilDeadline <= 0) {
+        reminderText = '⚠️ Peer evaluations are overdue!';
+        reminderColor = 'var(--warning)';
+    } else if (daysUntilDeadline <= 7) {
+        reminderText = `⚠️ Peer evaluations due in ${daysUntilDeadline} days!`;
+        reminderColor = 'var(--warning)';
+    } else if (daysUntilDeadline <= 14) {
+        reminderText = `ℹ️ Peer evaluations due in ${daysUntilDeadline} days`;
+        reminderColor = 'var(--accent-blue)';
+    } else {
+        reminderText = `✅ Peer evaluations due in ${daysUntilDeadline} days`;
+        reminderColor = 'var(--success)';
+    }
+    
+    const peerEvalElement = document.getElementById('peerEvalReminder');
+    if (peerEvalElement) {
+        peerEvalElement.innerHTML = `
+            <div style="margin: 10px 0;">
+                <div style="color: ${reminderColor}; font-weight: bold;">
+                    ${reminderText}
+                </div>
+                <div style="font-size: 12px; color: var(--accent-light); margin-top: 5px;">
+                    Due: January 23, 2026
+                </div>
+                <div style="margin-top: 15px; font-size: 11px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px;">
+                    <strong>Task Support & Involvement:</strong>
+                    <br>• Help teammates with their sections
+                    <br>• Participate in group discussions
+                    <br>• Provide constructive feedback
+                </div>
+            </div>
+        `;
+    }
+}
 
-        // ====================
-        // REPORT EDITOR FUNCTIONS
-        // ====================
-        function updateReportDisplay() {
-            const editor = document.getElementById('reportEditor');
-            editor.value = userReport;
-            updateWordCount();
-        }
+// ====================
+// SECTION NAVIGATION
+// ====================
+function showSection(sectionId) {
+    // Save current data before switching sections
+    if (hasUnsavedChanges()) {
+        saveReport();
+    }
+    
+    // Hide all sections
+    document.querySelectorAll('.content-area').forEach(section => {
+        section.classList.remove('active');
+    });
+    
+    // Remove active class from all nav items
+    document.querySelectorAll('.nav-menu a').forEach(link => {
+        link.classList.remove('active');
+    });
+    
+    // Show selected section
+    const sectionElement = document.getElementById(sectionId);
+    if (sectionElement) {
+        sectionElement.classList.add('active');
+    }
+    
+    // Update active nav item
+    const navLink = document.querySelector(`.nav-menu a[href="#${sectionId}"]`);
+    if (navLink) {
+        navLink.classList.add('active');
+    }
+    
+    // Update section title
+    const titles = {
+        'dashboard': 'Dashboard',
+        'report': 'Report Editor',
+        'tasks': 'Task Manager',
+        'literature': 'Literature Repository',
+        'chemistry': 'Chemistry Toolkit',
+        'references': 'ACS Reference Generator',
+        'backup': 'Data Backup',
+        'admin': 'Admin Panel'
+    };
+    
+    const sectionTitleElement = document.getElementById('sectionTitle');
+    if (sectionTitleElement) {
+        sectionTitleElement.textContent = titles[sectionId] || sectionId;
+    }
+    
+    // Special handling for admin section
+    if (sectionId === 'admin' && currentUser && currentUser.isAdmin) {
+        loadAdminView();
+    }
+}
 
-        function updateWordCount() {
-            const text = document.getElementById('reportEditor').value;
-            const wordCount = text.split(/\s+/).filter(word => word.length > 0).length;
-            const pageCount = Math.ceil(wordCount / 300);
-            const progressPercent = Math.min(100, (wordCount / 3000) * 100);
-            
-            document.getElementById('wordCount').textContent = wordCount;
-            document.getElementById('pageCount').textContent = pageCount;
-            document.getElementById('wordProgressBar').style.width = `${progressPercent}%`;
-            
-            // Update progress bar color based on completion
-            const progressBar = document.getElementById('wordProgressBar');
-            if (progressPercent >= 100) {
-                progressBar.style.background = 'var(--success)';
-            } else if (progressPercent >= 70) {
-                progressBar.style.background = 'var(--accent-blue)';
-            } else {
-                progressBar.style.background = 'var(--warning)';
-            }
-        }
+// ====================
+// REPORT EDITOR FUNCTIONS
+// ====================
+function updateReportDisplay() {
+    const editor = document.getElementById('reportEditor');
+    if (editor) {
+        editor.value = userReport;
+        updateWordCount();
+    }
+}
 
-        function saveReport() {
-            userReport = document.getElementById('reportEditor').value;
-            saveAllData();
+function updateWordCount() {
+    const editor = document.getElementById('reportEditor');
+    if (!editor) return;
+    
+    const text = editor.value;
+    const wordCount = text.split(/\s+/).filter(word => word.length > 0).length;
+    const pageCount = Math.ceil(wordCount / 300);
+    const progressPercent = Math.min(100, (wordCount / 3000) * 100);
+    
+    const wordCountElement = document.getElementById('wordCount');
+    const pageCountElement = document.getElementById('pageCount');
+    const wordProgressBar = document.getElementById('wordProgressBar');
+    
+    if (wordCountElement) wordCountElement.textContent = wordCount;
+    if (pageCountElement) pageCountElement.textContent = pageCount;
+    
+    if (wordProgressBar) {
+        wordProgressBar.style.width = `${progressPercent}%`;
+        
+        // Update progress bar color based on completion
+        if (progressPercent >= 100) {
+            wordProgressBar.style.background = 'var(--success)';
+        } else if (progressPercent >= 70) {
+            wordProgressBar.style.background = 'var(--accent-blue)';
+        } else {
+            wordProgressBar.style.background = 'var(--warning)';
         }
+    }
+}
 
-        function exportReportPDF() {
-            const text = document.getElementById('reportEditor').value;
-            const blob = new Blob([text], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `WickedProblems_Report_${currentUser.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            showNotification('Report exported as text file!', 'success');
+function saveReport() {
+    const editor = document.getElementById('reportEditor');
+    if (editor) {
+        userReport = editor.value;
+        saveAllData();
+    }
+}
+
+function exportReportPDF() {
+    const text = userReport;
+    if (!text || text.trim() === '') {
+        showNotification('No report content to export!', 'warning');
+        return;
+    }
+    
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `WickedProblems_Report_${currentUser.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showNotification('Report exported as text file!', 'success');
+}
+
+function copyReportToClipboard() {
+    const text = userReport;
+    if (!text || text.trim() === '') {
+        showNotification('No report content to copy!', 'warning');
+        return;
+    }
+    
+    navigator.clipboard.writeText(text).then(() => {
+        showNotification('Report copied to clipboard!', 'success');
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+        showNotification('Failed to copy to clipboard', 'warning');
+    });
+}
+
+function clearReport() {
+    if (confirm('Are you sure you want to clear the entire report? This cannot be undone.')) {
+        const editor = document.getElementById('reportEditor');
+        if (editor) {
+            editor.value = '';
         }
+        userReport = '';
+        saveReport();
+        updateWordCount();
+    }
+}
 
-        function copyReportToClipboard() {
-            const text = document.getElementById('reportEditor').value;
-            navigator.clipboard.writeText(text).then(() => {
-                showNotification('Report copied to clipboard!', 'success');
-            });
-        }
+// ====================
+// TASK MANAGER FUNCTIONS
+// ====================
+function updateTaskDisplay() {
+    const taskList = document.getElementById('taskList');
+    const completed = userTasks.filter(t => t.completed).length;
+    const total = userTasks.length;
+    const pending = total - completed;
+    
+    const totalTasksElement = document.getElementById('totalTasks');
+    const completedTasksElement = document.getElementById('completedTasks');
+    const pendingTasksElement = document.getElementById('pendingTasks');
+    
+    if (totalTasksElement) totalTasksElement.textContent = total;
+    if (completedTasksElement) completedTasksElement.textContent = completed;
+    if (pendingTasksElement) pendingTasksElement.textContent = pending;
+    
+    if (taskList) {
+        taskList.innerHTML = userTasks.map((task, index) => `
+            <li class="task-item ${task.completed ? 'completed' : ''}">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" ${task.completed ? 'checked' : ''} 
+                           onchange="toggleTask(${index})" style="cursor: pointer;">
+                    <span>${task.text || 'Untitled Task'}</span>
+                </div>
+                <div class="task-actions">
+                    <button onclick="editTask(${index})" title="Edit">✏️</button>
+                    <button onclick="deleteTask(${index})" title="Delete">🗑️</button>
+                </div>
+            </li>
+        `).join('');
+    }
+    
+    updateDashboardStats();
+}
 
-        function clearReport() {
-            if (confirm('Are you sure you want to clear the entire report? This cannot be undone.')) {
-                document.getElementById('reportEditor').value = '';
-                userReport = '';
-                saveReport();
-                updateWordCount();
-            }
-        }
+function addTask() {
+    const input = document.getElementById('newTaskInput');
+    if (!input) return;
+    
+    const text = input.value.trim();
+    
+    if (text) {
+        userTasks.push({
+            text: text,
+            completed: false,
+            createdAt: new Date().toISOString()
+        });
+        
+        input.value = '';
+        saveTasks();
+        updateTaskDisplay();
+        showNotification('Task added!', 'success');
+    }
+}
 
-        // ====================
-        // TASK MANAGER FUNCTIONS
-        // ====================
-        function updateTaskDisplay() {
-            const taskList = document.getElementById('taskList');
-            const completed = userTasks.filter(t => t.completed).length;
-            const total = userTasks.length;
-            const pending = total - completed;
-            
-            document.getElementById('totalTasks').textContent = total;
-            document.getElementById('completedTasks').textContent = completed;
-            document.getElementById('pendingTasks').textContent = pending;
-            
-            taskList.innerHTML = userTasks.map((task, index) => `
-                <li class="task-item ${task.completed ? 'completed' : ''}">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <input type="checkbox" ${task.completed ? 'checked' : ''} 
-                               onchange="toggleTask(${index})" style="cursor: pointer;">
-                        <span>${task.text}</span>
-                    </div>
-                    <div class="task-actions">
-                        <button onclick="editTask(${index})" title="Edit">✏️</button>
-                        <button onclick="deleteTask(${index})" title="Delete">🗑️</button>
-                    </div>
-                </li>
-            `).join('');
-            
-            updateDashboardStats();
-        }
+function toggleTask(index) {
+    if (index >= 0 && index < userTasks.length) {
+        userTasks[index].completed = !userTasks[index].completed;
+        saveTasks();
+        updateTaskDisplay();
+    }
+}
 
-        function addTask() {
-            const input = document.getElementById('newTaskInput');
-            const text = input.value.trim();
-            
-            if (text) {
-                userTasks.push({
-                    text: text,
-                    completed: false,
-                    createdAt: new Date().toISOString()
-                });
-                
-                input.value = '';
-                saveTasks();
-                updateTaskDisplay();
-                showNotification('Task added!', 'success');
-            }
-        }
-
-        function toggleTask(index) {
-            userTasks[index].completed = !userTasks[index].completed;
+function editTask(index) {
+    if (index >= 0 && index < userTasks.length) {
+        const newText = prompt('Edit task:', userTasks[index].text);
+        if (newText !== null && newText.trim()) {
+            userTasks[index].text = newText.trim();
             saveTasks();
             updateTaskDisplay();
         }
+    }
+}
 
-        function editTask(index) {
-            const newText = prompt('Edit task:', userTasks[index].text);
-            if (newText !== null && newText.trim()) {
-                userTasks[index].text = newText.trim();
-                saveTasks();
-                updateTaskDisplay();
-            }
-        }
-
-        function deleteTask(index) {
-            if (confirm('Delete this task?')) {
-                userTasks.splice(index, 1);
-                saveTasks();
-                updateTaskDisplay();
-            }
-        }
-
-        function saveTasks() {
-            scheduleSave();
-        }
-
-        function resetToDefaultTasks() {
-            const defaultTasks = [
-                { text: "Literature Review: Critical Raw Materials", completed: false },
-                { text: "Chemical Analysis: Battery Components", completed: false },
-                { text: "ACS Referencing and Citations", completed: false },
-                { text: "Supply Chain Mapping", completed: false },
-                { text: "Environmental Impact Assessment", completed: false },
-                { text: "Future Alternatives Research", completed: false },
-                { text: "Draft Introduction Section", completed: false },
-                { text: "Complete Methodology Section", completed: false },
-                { text: "Write Results Analysis", completed: false },
-                { text: "Peer Evaluation Forms", completed: false },
-                { text: "Final Report Compilation", completed: false },
-                { text: "Proofread and Format", completed: false }
-            ];
-            
-            userTasks = defaultTasks;
+function deleteTask(index) {
+    if (index >= 0 && index < userTasks.length) {
+        if (confirm('Delete this task?')) {
+            userTasks.splice(index, 1);
             saveTasks();
             updateTaskDisplay();
-            showNotification('Reset to default tasks!', 'success');
         }
+    }
+}
 
-        function clearAllTasks() {
-            if (confirm('Clear all tasks? This cannot be undone.')) {
-                userTasks = [];
-                saveTasks();
-                updateTaskDisplay();
-            }
-        }
+function saveTasks() {
+    scheduleSave();
+}
 
-        // ====================
-        // LITERATURE REPOSITORY
-        // ====================
-        function updateArticlesDisplay(filter = 'all') {
-            const articlesList = document.getElementById('articlesList');
-            let filteredArticles = userArticles;
-            
-            if (filter !== 'all') {
-                filteredArticles = userArticles.filter(article => article.category === filter);
-            }
-            
-            articlesList.innerHTML = filteredArticles.map((article, index) => `
-                <div class="article-item ${article.category}">
-                    <div class="article-title">${article.title}</div>
-                    <div class="article-meta">
-                        ${article.authors ? `Authors: ${article.authors} | ` : ''}
-                        Category: ${getCategoryName(article.category)}
-                        ${article.addedAt ? ` | Added: ${new Date(article.addedAt).toLocaleDateString()}` : ''}
-                    </div>
-                    ${article.url ? `<div style="margin-top: 5px;">
-                        <a href="${article.url}" target="_blank" style="color: var(--accent-blue); font-size: 12px;">
-                            🔗 ${article.url}
-                        </a>
-                    </div>` : ''}
-                    <div class="task-actions" style="margin-top: 10px;">
-                        <button onclick="editArticle(${index})" title="Edit">✏️</button>
-                        <button onclick="deleteArticle(${index})" title="Delete">🗑️</button>
-                    </div>
-                </div>
-            `).join('');
-        }
+function resetToDefaultTasks() {
+    const defaultTasks = [
+        { text: "Literature Review: Critical Raw Materials", completed: false },
+        { text: "Chemical Analysis: Battery Components", completed: false },
+        { text: "ACS Referencing and Citations", completed: false },
+        { text: "Supply Chain Mapping", completed: false },
+        { text: "Environmental Impact Assessment", completed: false },
+        { text: "Future Alternatives Research", completed: false },
+        { text: "Draft Introduction Section", completed: false },
+        { text: "Complete Methodology Section", completed: false },
+        { text: "Write Results Analysis", completed: false },
+        { text: "Peer Evaluation Forms", completed: false },
+        { text: "Final Report Compilation", completed: false },
+        { text: "Proofread and Format", completed: false }
+    ];
+    
+    userTasks = defaultTasks;
+    saveTasks();
+    updateTaskDisplay();
+    showNotification('Reset to default tasks!', 'success');
+}
 
-        function getCategoryName(category) {
-            const categories = {
-                'anode': 'Anode Chemistry',
-                'cathode': 'Cathode Materials',
-                'geopolitical': 'Geopolitical Constraints',
-                'recycling': 'Recycling Processes',
-                'other': 'Other'
-            };
-            return categories[category] || category;
-        }
+function clearAllTasks() {
+    if (confirm('Clear all tasks? This cannot be undone.')) {
+        userTasks = [];
+        saveTasks();
+        updateTaskDisplay();
+    }
+}
 
-        function filterArticles(category) {
-            // Update active tab
-            document.querySelectorAll('.category-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            event.target.classList.add('active');
-            
-            updateArticlesDisplay(category);
-        }
+// ====================
+// LITERATURE REPOSITORY
+// ====================
+function updateArticlesDisplay(filter = 'all') {
+    const articlesList = document.getElementById('articlesList');
+    if (!articlesList) return;
+    
+    let filteredArticles = userArticles;
+    
+    if (filter !== 'all') {
+        filteredArticles = userArticles.filter(article => article.category === filter);
+    }
+    
+    articlesList.innerHTML = filteredArticles.map((article, index) => `
+        <div class="article-item ${article.category}">
+            <div class="article-title">${article.title || 'Untitled Article'}</div>
+            <div class="article-meta">
+                ${article.authors ? `Authors: ${article.authors} | ` : ''}
+                Category: ${getCategoryName(article.category)}
+                ${article.addedAt ? ` | Added: ${new Date(article.addedAt).toLocaleDateString()}` : ''}
+            </div>
+            ${article.url ? `<div style="margin-top: 5px;">
+                <a href="${article.url}" target="_blank" style="color: var(--accent-blue); font-size: 12px;">
+                    🔗 ${article.url}
+                </a>
+            </div>` : ''}
+            <div class="task-actions" style="margin-top: 10px;">
+                <button onclick="editArticle(${index})" title="Edit">✏️</button>
+                <button onclick="deleteArticle(${index})" title="Delete">🗑️</button>
+            </div>
+        </div>
+    `).join('');
+}
 
-        function addArticle() {
-            const title = document.getElementById('articleTitle').value.trim();
-            const url = document.getElementById('articleUrl').value.trim();
-            const category = document.getElementById('articleCategory').value;
-            const authors = document.getElementById('articleAuthors').value.trim();
-            
-            if (!title) {
-                showNotification('Please enter article title!', 'warning');
-                return;
-            }
-            
-            userArticles.push({
-                title: title,
-                url: url || null,
-                category: category,
-                authors: authors || null,
-                addedAt: new Date().toISOString()
-            });
-            
-            // Clear form
-            document.getElementById('articleTitle').value = '';
-            document.getElementById('articleUrl').value = '';
-            document.getElementById('articleAuthors').value = '';
-            
+function getCategoryName(category) {
+    const categories = {
+        'anode': 'Anode Chemistry',
+        'cathode': 'Cathode Materials',
+        'geopolitical': 'Geopolitical Constraints',
+        'recycling': 'Recycling Processes',
+        'other': 'Other'
+    };
+    return categories[category] || category;
+}
+
+function filterArticles(category) {
+    // Update active tab
+    document.querySelectorAll('.category-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    if (event && event.target) {
+        event.target.classList.add('active');
+    }
+    
+    updateArticlesDisplay(category);
+}
+
+function addArticle() {
+    const titleInput = document.getElementById('articleTitle');
+    const urlInput = document.getElementById('articleUrl');
+    const categoryInput = document.getElementById('articleCategory');
+    const authorsInput = document.getElementById('articleAuthors');
+    
+    if (!titleInput) return;
+    
+    const title = titleInput.value.trim();
+    const url = urlInput ? urlInput.value.trim() : '';
+    const category = categoryInput ? categoryInput.value : 'other';
+    const authors = authorsInput ? authorsInput.value.trim() : '';
+    
+    if (!title) {
+        showNotification('Please enter article title!', 'warning');
+        return;
+    }
+    
+    userArticles.push({
+        title: title,
+        url: url || null,
+        category: category,
+        authors: authors || null,
+        addedAt: new Date().toISOString()
+    });
+    
+    // Clear form
+    titleInput.value = '';
+    if (urlInput) urlInput.value = '';
+    if (authorsInput) authorsInput.value = '';
+    
+    saveArticles();
+    updateArticlesDisplay();
+    updateDashboardStats();
+    showNotification('Article added to repository!', 'success');
+}
+
+function editArticle(index) {
+    if (index >= 0 && index < userArticles.length) {
+        const article = userArticles[index];
+        const newTitle = prompt('Edit article title:', article.title);
+        if (newTitle !== null && newTitle.trim()) {
+            userArticles[index].title = newTitle.trim();
+            const newUrl = prompt('Edit URL (or leave empty):', article.url || '');
+            userArticles[index].url = newUrl.trim() || null;
+            const newAuthors = prompt('Edit authors:', article.authors || '');
+            userArticles[index].authors = newAuthors.trim() || null;
             saveArticles();
             updateArticlesDisplay();
-            updateDashboardStats();
-            showNotification('Article added to repository!', 'success');
         }
+    }
+}
 
-        function editArticle(index) {
-            const article = userArticles[index];
-            const newTitle = prompt('Edit article title:', article.title);
-            if (newTitle !== null && newTitle.trim()) {
-                userArticles[index].title = newTitle.trim();
-                const newUrl = prompt('Edit URL (or leave empty):', article.url || '');
-                userArticles[index].url = newUrl.trim() || null;
-                const newAuthors = prompt('Edit authors:', article.authors || '');
-                userArticles[index].authors = newAuthors.trim() || null;
-                saveArticles();
-                updateArticlesDisplay();
-            }
+function deleteArticle(index) {
+    if (index >= 0 && index < userArticles.length) {
+        if (confirm('Delete this article from repository?')) {
+            userArticles.splice(index, 1);
+            saveArticles();
+            updateArticlesDisplay();
         }
+    }
+}
 
-        function deleteArticle(index) {
-            if (confirm('Delete this article from repository?')) {
-                userArticles.splice(index, 1);
-                saveArticles();
-                updateArticlesDisplay();
-            }
-        }
+function saveArticles() {
+    scheduleSave();
+}
 
-        function saveArticles() {
-            scheduleSave();
-        }
+// ====================
+// ACS REFERENCE GENERATOR
+// ====================
+function generateACSReference() {
+    const authors = document.getElementById('refAuthors')?.value.trim() || '';
+    const year = document.getElementById('refYear')?.value.trim() || '';
+    const title = document.getElementById('refTitle')?.value.trim() || '';
+    const journal = document.getElementById('refJournal')?.value.trim() || '';
+    const volume = document.getElementById('refVolume')?.value.trim() || '';
+    const issue = document.getElementById('refIssue')?.value.trim() || '';
+    const pages = document.getElementById('refPages')?.value.trim() || '';
+    const doi = document.getElementById('refDOI')?.value.trim() || '';
+    
+    if (!authors || !year || !title || !journal || !volume || !pages) {
+        showNotification('Please fill in all required fields!', 'warning');
+        return;
+    }
+    
+    let reference = `${authors} ${title}. `;
+    reference += `<em>${journal}</em> `;
+    reference += `${year}, `;
+    reference += `<em>${volume}</em>`;
+    if (issue) reference += `(${issue})`;
+    reference += `, ${pages}.`;
+    if (doi) reference += ` DOI: ${doi}`;
+    
+    const generatedRefElement = document.getElementById('generatedReference');
+    if (generatedRefElement) {
+        generatedRefElement.value = reference;
+    }
+}
 
-        // ====================
-        // ACS REFERENCE GENERATOR
-        // ====================
-        function generateACSReference() {
-            const authors = document.getElementById('refAuthors').value.trim();
-            const year = document.getElementById('refYear').value.trim();
-            const title = document.getElementById('refTitle').value.trim();
-            const journal = document.getElementById('refJournal').value.trim();
-            const volume = document.getElementById('refVolume').value.trim();
-            const issue = document.getElementById('refIssue').value.trim();
-            const pages = document.getElementById('refPages').value.trim();
-            const doi = document.getElementById('refDOI').value.trim();
-            
-            if (!authors || !year || !title || !journal || !volume || !pages) {
-                showNotification('Please fill in all required fields!', 'warning');
-                return;
-            }
-            
-            let reference = `${authors} ${title}. `;
-            reference += `<em>${journal}</em> `;
-            reference += `${year}, `;
-            reference += `<em>${volume}</em>`;
-            if (issue) reference += `(${issue})`;
-            reference += `, ${pages}.`;
-            if (doi) reference += ` DOI: ${doi}`;
-            
-            document.getElementById('generatedReference').value = reference;
-        }
+function copyReference() {
+    const generatedRefElement = document.getElementById('generatedReference');
+    if (!generatedRefElement) return;
+    
+    const reference = generatedRefElement.value;
+    if (!reference) {
+        showNotification('No reference to copy!', 'warning');
+        return;
+    }
+    
+    navigator.clipboard.writeText(reference).then(() => {
+        showNotification('Reference copied to clipboard!', 'success');
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+        showNotification('Failed to copy to clipboard', 'warning');
+    });
+}
 
-        function copyReference() {
-            const reference = document.getElementById('generatedReference').value;
-            if (!reference) {
-                showNotification('No reference to copy!', 'warning');
-                return;
-            }
-            
-            navigator.clipboard.writeText(reference).then(() => {
-                showNotification('Reference copied to clipboard!', 'success');
-            });
-        }
-
-        // ====================
-        // ADMIN FUNCTIONS
-        // ====================
-        function loadAdminView() {
-            if (!currentUser.isAdmin) return;
-            
-            const predefinedUsers = JSON.parse(localStorage.getItem('wickedProblemsUsers')) || [];
-            const adminGrid = document.getElementById('adminUsersGrid');
-            
-            adminGrid.innerHTML = predefinedUsers.map(user => {
-                // Load user data
-                const userTasks = JSON.parse(localStorage.getItem(`tasks_${user.id}`)) || [];
-                const userArticles = JSON.parse(localStorage.getItem(`articles_${user.id}`)) || [];
-                const userReport = localStorage.getItem(`report_${user.id}`) || '';
-                const wordCount = userReport.split(/\s+/).filter(w => w.length > 0).length;
-                const completedTasks = userTasks.filter(t => t.completed).length;
-                const hasBackup = localStorage.getItem(`backup_${user.id}`) ? '✅' : '❌';
+// ====================
+// ADMIN FUNCTIONS
+// ====================
+function loadAdminView() {
+    if (!currentUser || !currentUser.isAdmin) return;
+    
+    const adminGrid = document.getElementById('adminUsersGrid');
+    if (!adminGrid) return;
+    
+    const predefinedUsers = JSON.parse(localStorage.getItem('wickedProblemsUsers')) || [];
+    
+    adminGrid.innerHTML = predefinedUsers.map(user => {
+        // Load user data
+        const userTasks = JSON.parse(localStorage.getItem(`tasks_${user.id}`)) || [];
+        const userArticles = JSON.parse(localStorage.getItem(`articles_${user.id}`)) || [];
+        const userReport = localStorage.getItem(`report_${user.id}`) || '';
+        const wordCount = userReport.split(/\s+/).filter(w => w.length > 0).length;
+        const completedTasks = userTasks.filter(t => t.completed).length;
+        const hasBackup = localStorage.getItem(`backup_${user.id}`) ? '✅' : '❌';
+        
+        return `
+            <div class="admin-user-card">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div>
+                        <h4>${user.name || 'Unknown User'}</h4>
+                        <p style="font-size: 12px; color: var(--accent-light);">${user.email || 'No email'}</p>
+                        <span class="user-role ${user.role || 'user'}" style="margin-top: 5px;">${(user.role || 'user').toUpperCase()}</span>
+                    </div>
+                    <button class="btn btn-secondary btn-small" onclick="viewUserData(${user.id})">
+                        View Data
+                    </button>
+                </div>
                 
-                return `
-                    <div class="admin-user-card">
-                        <div style="display: flex; justify-content: space-between; align-items: start;">
-                            <div>
-                                <h4>${user.name}</h4>
-                                <p style="font-size: 12px; color: var(--accent-light);">${user.email}</p>
-                                <span class="user-role ${user.role}" style="margin-top: 5px;">${user.role.toUpperCase()}</span>
-                            </div>
-                            <button class="btn btn-secondary btn-small" onclick="viewUserData(${user.id})">
-                                View Data
-                            </button>
+                <div style="margin-top: 15px; font-size: 12px;">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                        <div>
+                            <div style="color: var(--accent-light);">Report</div>
+                            <div style="color: var(--accent-blue);">${wordCount} words</div>
                         </div>
-                        
-                        <div style="margin-top: 15px; font-size: 12px;">
-                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-                                <div>
-                                    <div style="color: var(--accent-light);">Report</div>
-                                    <div style="color: var(--accent-blue);">${wordCount} words</div>
-                                </div>
-                                <div>
-                                    <div style="color: var(--accent-light);">Tasks</div>
-                                    <div style="color: var(--accent-blue);">${completedTasks}/${userTasks.length}</div>
-                                </div>
-                                <div>
-                                    <div style="color: var(--accent-light);">Articles</div>
-                                    <div style="color: var(--accent-blue);">${userArticles.length}</div>
-                                </div>
-                                <div>
-                                    <div style="color: var(--accent-light);">Backup</div>
-                                    <div style="color: var(--accent-blue);">${hasBackup}</div>
-                                </div>
-                            </div>
+                        <div>
+                            <div style="color: var(--accent-light);">Tasks</div>
+                            <div style="color: var(--accent-blue);">${completedTasks}/${userTasks.length}</div>
                         </div>
-                        
-                        <div style="margin-top: 15px; display: flex; gap: 10px;">
-                            <button class="btn btn-secondary btn-small" onclick="exportUserData(${user.id})">
-                                Export
-                            </button>
-                            <button class="btn btn-warning btn-small" onclick="resetUserData(${user.id})">
-                                Reset
-                            </button>
+                        <div>
+                            <div style="color: var(--accent-light);">Articles</div>
+                            <div style="color: var(--accent-blue);">${userArticles.length}</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--accent-light);">Backup</div>
+                            <div style="color: var(--accent-blue);">${hasBackup}</div>
                         </div>
                     </div>
-                `;
-            }).join('');
-        }
-
-        function viewUserData(userId) {
-            const userTasks = JSON.parse(localStorage.getItem(`tasks_${userId}`)) || [];
-            const userArticles = JSON.parse(localStorage.getItem(`articles_${userId}`)) || [];
-            const userReport = localStorage.getItem(`report_${userId}`) || '';
-            
-            let message = `👤 USER DATA REPORT\n\n`;
-            message += `Tasks (${userTasks.length}):\n`;
-            userTasks.forEach((task, index) => {
-                message += `  ${index + 1}. [${task.completed ? '✅' : '⬜'}] ${task.text}\n`;
-            });
-            
-            message += `\nArticles (${userArticles.length}):\n`;
-            userArticles.forEach((article, index) => {
-                message += `  ${index + 1}. ${article.title}\n`;
-            });
-            
-            message += `\nReport Summary:\n`;
-            const wordCount = userReport.split(/\s+/).filter(w => w.length > 0).length;
-            message += `  ${wordCount} words (${Math.ceil(wordCount/300)} pages)\n`;
-            message += `  ${userReport.length} characters\n`;
-            message += `  ${wordCount >= 3000 ? '✅ Target reached' : `❌ Needs ${3000 - wordCount} more words`}\n`;
-            
-            alert(message);
-        }
-
-        function exportUserData(userId) {
-            const predefinedUsers = JSON.parse(localStorage.getItem('wickedProblemsUsers')) || [];
-            const user = predefinedUsers.find(u => u.id === userId);
-            if (!user) return;
-            
-            const userTasks = JSON.parse(localStorage.getItem(`tasks_${userId}`)) || [];
-            const userArticles = JSON.parse(localStorage.getItem(`articles_${userId}`)) || [];
-            const userReport = localStorage.getItem(`report_${userId}`) || '';
-            
-            let exportData = `WICKED PROBLEMS HUB - USER DATA EXPORT\n`;
-            exportData += `User: ${user.name} (${user.email})\n`;
-            exportData += `Role: ${user.role}\n`;
-            exportData += `Exported: ${new Date().toLocaleString()}\n`;
-            exportData += '='.repeat(60) + '\n\n';
-            
-            exportData += '📋 TASKS:\n';
-            userTasks.forEach((task, index) => {
-                exportData += `  ${index + 1}. [${task.completed ? 'X' : ' '}] ${task.text}\n`;
-            });
-            
-            exportData += '\n📚 ARTICLES:\n';
-            userArticles.forEach((article, index) => {
-                exportData += `  ${index + 1}. ${article.title}\n`;
-                if (article.authors) exportData += `     Authors: ${article.authors}\n`;
-                if (article.url) exportData += `     URL: ${article.url}\n`;
-                exportData += `     Category: ${getCategoryName(article.category)}\n`;
-            });
-            
-            exportData += '\n📝 REPORT:\n';
-            exportData += userReport;
-            
-            const blob = new Blob([exportData], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `wicked_problems_${user.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            showNotification(`Exported data for ${user.name}!`, 'success');
-        }
-
-        function resetUserData(userId) {
-            if (confirm('Reset this user\'s data? This will delete their report, tasks, and articles.')) {
-                localStorage.removeItem(`tasks_${userId}`);
-                localStorage.removeItem(`articles_${userId}`);
-                localStorage.removeItem(`report_${userId}`);
-                localStorage.removeItem(`backup_${userId}`);
-                loadAdminView();
-                showNotification('User data reset!', 'success');
-            }
-        }
-
-        function exportAllUsersData() {
-            const predefinedUsers = JSON.parse(localStorage.getItem('wickedProblemsUsers')) || [];
-            let exportData = 'WICKED PROBLEMS HUB - ALL USERS DATA EXPORT\n';
-            exportData += 'Generated: ' + new Date().toLocaleString() + '\n';
-            exportData += '='.repeat(60) + '\n\n';
-            
-            predefinedUsers.forEach(user => {
-                exportData += `👤 USER: ${user.name} (${user.email})\n`;
-                exportData += '─'.repeat(40) + '\n';
+                </div>
                 
-                const userTasks = JSON.parse(localStorage.getItem(`tasks_${user.id}`)) || [];
-                const userArticles = JSON.parse(localStorage.getItem(`articles_${user.id}`)) || [];
-                const userReport = localStorage.getItem(`report_${user.id}`) || '';
-                
-                exportData += '📋 TASKS:\n';
-                userTasks.forEach((task, index) => {
-                    exportData += `  ${index + 1}. [${task.completed ? '✅' : '⬜'}] ${task.text}\n`;
-                });
-                
-                exportData += '\n📚 ARTICLES:\n';
-                userArticles.forEach((article, index) => {
-                    exportData += `  ${index + 1}. ${article.title}\n`;
-                });
-                
-                exportData += '\n📝 REPORT SUMMARY:\n';
-                const wordCount = userReport.split(/\s+/).filter(w => w.length > 0).length;
-                exportData += `  Words: ${wordCount}\n`;
-                exportData += `  Characters: ${userReport.length}\n`;
-                exportData += `  Preview: ${userReport.substring(0, 200)}...\n`;
-                
-                exportData += '\n' + '='.repeat(60) + '\n\n';
-            });
-            
-            const blob = new Blob([exportData], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `wicked_problems_all_users_${new Date().toISOString().split('T')[0]}.txt`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            showNotification('All users data exported!', 'success');
-        }
+                <div style="margin-top: 15px; display: flex; gap: 10px;">
+                    <button class="btn btn-secondary btn-small" onclick="exportUserData(${user.id})">
+                        Export
+                    </button>
+                    <button class="btn btn-warning btn-small" onclick="resetUserData(${user.id})">
+                        Reset
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
 
-        function backupAllUsersData() {
-            const predefinedUsers = JSON.parse(localStorage.getItem('wickedProblemsUsers')) || [];
-            const backup = {
-                timestamp: new Date().toISOString(),
-                users: predefinedUsers,
-                data: {}
-            };
-            
-            predefinedUsers.forEach(user => {
-                backup.data[user.id] = {
-                    tasks: JSON.parse(localStorage.getItem(`tasks_${user.id}`)) || [],
-                    articles: JSON.parse(localStorage.getItem(`articles_${user.id}`)) || [],
-                    report: localStorage.getItem(`report_${user.id}`) || ''
-                };
-            });
-            
-            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `wicked_problems_backup_all_${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            showNotification('All users data backed up!', 'success');
-        }
+function viewUserData(userId) {
+    const userTasks = JSON.parse(localStorage.getItem(`tasks_${userId}`)) || [];
+    const userArticles = JSON.parse(localStorage.getItem(`articles_${userId}`)) || [];
+    const userReport = localStorage.getItem(`report_${userId}`) || '';
+    
+    let message = `👤 USER DATA REPORT\n\n`;
+    message += `Tasks (${userTasks.length}):\n`;
+    userTasks.forEach((task, index) => {
+        message += `  ${index + 1}. [${task.completed ? '✅' : '⬜'}] ${task.text}\n`;
+    });
+    
+    message += `\nArticles (${userArticles.length}):\n`;
+    userArticles.forEach((article, index) => {
+        message += `  ${index + 1}. ${article.title}\n`;
+    });
+    
+    message += `\nReport Summary:\n`;
+    const wordCount = userReport.split(/\s+/).filter(w => w.length > 0).length;
+    message += `  ${wordCount} words (${Math.ceil(wordCount/300)} pages)\n`;
+    message += `  ${userReport.length} characters\n`;
+    message += `  ${wordCount >= 3000 ? '✅ Target reached' : `❌ Needs ${3000 - wordCount} more words`}\n`;
+    
+    alert(message);
+}
 
-        function resetAllUsersData() {
-            if (!currentUser.isAdmin) return;
-            
-            if (confirm('WARNING: This will reset ALL users data (reports, tasks, articles). Are you sure?')) {
-                const predefinedUsers = JSON.parse(localStorage.getItem('wickedProblemsUsers')) || [];
-                predefinedUsers.forEach(user => {
-                    localStorage.removeItem(`tasks_${user.id}`);
-                    localStorage.removeItem(`articles_${user.id}`);
-                    localStorage.removeItem(`report_${user.id}`);
-                    localStorage.removeItem(`backup_${user.id}`);
-                });
-                
-                showNotification('All users data has been reset!', 'success');
-                loadAdminView();
-            }
-        }
+function exportUserData(userId) {
+    const predefinedUsers = JSON.parse(localStorage.getItem('wickedProblemsUsers')) || [];
+    const user = predefinedUsers.find(u => u.id === userId);
+    if (!user) return;
+    
+    const userTasks = JSON.parse(localStorage.getItem(`tasks_${userId}`)) || [];
+    const userArticles = JSON.parse(localStorage.getItem(`articles_${userId}`)) || [];
+    const userReport = localStorage.getItem(`report_${userId}`) || '';
+    
+    let exportData = `WICKED PROBLEMS HUB - USER DATA EXPORT\n`;
+    exportData += `User: ${user.name} (${user.email})\n`;
+    exportData += `Role: ${user.role}\n`;
+    exportData += `Exported: ${new Date().toLocaleString()}\n`;
+    exportData += '='.repeat(60) + '\n\n';
+    
+    exportData += '📋 TASKS:\n';
+    userTasks.forEach((task, index) => {
+        exportData += `  ${index + 1}. [${task.completed ? 'X' : ' '}] ${task.text}\n`;
+    });
+    
+    exportData += '\n📚 ARTICLES:\n';
+    userArticles.forEach((article, index) => {
+        exportData += `  ${index + 1}. ${article.title}\n`;
+        if (article.authors) exportData += `     Authors: ${article.authors}\n`;
+        if (article.url) exportData += `     URL: ${article.url}\n`;
+        exportData += `     Category: ${getCategoryName(article.category)}\n`;
+    });
+    
+    exportData += '\n📝 REPORT:\n';
+    exportData += userReport;
+    
+    const blob = new Blob([exportData], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `wicked_problems_${user.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showNotification(`Exported data for ${user.name}!`, 'success');
+}
 
-        // ====================
-        // DATA EXPORT
-        // ====================
-        function exportAllData() {
-            const exportObj = {
-                user: currentUser,
-                tasks: userTasks,
-                articles: userArticles,
-                report: userReport,
-                exportedAt: new Date().toISOString(),
-                wordCount: userReport.split(/\s+/).filter(w => w.length > 0).length,
-                taskCompletion: `${userTasks.filter(t => t.completed).length}/${userTasks.length}`,
-                articleCount: userArticles.length
-            };
-            
-            const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `WickedProblems_${currentUser.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            showNotification('All data exported successfully!', 'success');
-        }
+function resetUserData(userId) {
+    if (confirm('Reset this user\'s data? This will delete their report, tasks, and articles.')) {
+        localStorage.removeItem(`tasks_${userId}`);
+        localStorage.removeItem(`articles_${userId}`);
+        localStorage.removeItem(`report_${userId}`);
+        localStorage.removeItem(`backup_${userId}`);
+        loadAdminView();
+        showNotification('User data reset!', 'success');
+    }
+}
 
-        // ====================
-        // UTILITY FUNCTIONS
-        // ====================
-        function logout() {
-            // Save all data before logging out
-            saveAllData();
-            
-            // Clear only session data, NOT user work
-            localStorage.removeItem('currentUser');
-            
-            // Show confirmation
-            showNotification('All data saved! Redirecting to login...', 'success');
-            
-            // Redirect after delay
-            setTimeout(() => {
-                window.location.href = 'index.html';
-            }, 1500);
-        }
-
-        function checkPeerEvaluationReminder() {
-            const deadline = new Date('2026-01-23');
-            const today = new Date();
-            const daysUntilDeadline = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
-            
-            if (daysUntilDeadline <= 7 && daysUntilDeadline > 0) {
-                setTimeout(() => {
-                    if (confirm(`⚠️ PEER EVALUATION REMINDER\n\nPeer evaluations are due in ${daysUntilDeadline} days (January 23, 2026).\n\nRemember to evaluate your teammates based on:\n• Task Support\n• Involvement\n• Quality of Work`)) {
-                        showSection('dashboard');
-                    }
-                }, 2000);
-            }
-        }
-
-        function showNotification(message, type = 'success') {
-            // Create notification element
-            const notification = document.createElement('div');
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: ${type === 'success' ? 'var(--success)' : type === 'warning' ? 'var(--warning)' : 'var(--accent-blue)'};
-                color: ${type === 'success' || type === 'warning' ? 'white' : 'var(--primary-dark)'};
-                padding: 15px 20px;
-                border-radius: 8px;
-                box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-                z-index: 1000;
-                animation: slideIn 0.3s ease;
-                font-weight: 600;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            `;
-            
-            notification.innerHTML = `
-                <span>${type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️'}</span>
-                <span>${message}</span>
-            `;
-            document.body.appendChild(notification);
-            
-            // Remove after 3 seconds
-            setTimeout(() => {
-                notification.style.animation = 'slideOut 0.3s ease';
-                setTimeout(() => {
-                    document.body.removeChild(notification);
-                }, 300);
-            }, 3000);
-        }
-
-        // Clear localStorage (with confirmation)
-        function clearLocalData() {
-            if (confirm('⚠️ WARNING: This will delete ALL your work in this browser!\n\nThis includes:\n• Your report\n• All tasks\n• All saved articles\n\nAre you absolutely sure? Export your data first!')) {
-                const userId = currentUser.id;
-                localStorage.removeItem(`tasks_${userId}`);
-                localStorage.removeItem(`articles_${userId}`);
-                localStorage.removeItem(`report_${userId}`);
-                localStorage.removeItem(`backup_${userId}`);
-                
-                userTasks = [];
-                userArticles = [];
-                userReport = '';
-                
-                updateTaskDisplay();
-                updateArticlesDisplay();
-                updateReportDisplay();
-                showNotification('All local data cleared!', 'warning');
-            }
-        }
+function exportAllUsersData() {
+    const predefinedUsers = JSON.parse(localStorage.getItem('wickedProblemsUsers')) || [];
+    let exportData = 'WICKED PROBLEMS HUB - ALL USERS DATA EXPORT\n';
+    exportData += 'Generated: ' + new Date().toLocaleString() + '\n';
+    exportData += '='.repeat(60) + '\n\n';
+    
+    predefinedUsers.forEach(user => {
+        exportData += `👤 USER: ${user.name} (${user.email})\n`;
+        exportData += '─'.repeat(40) + '\n';
         
+        const userTasks = JSON.parse(localStorage.getItem(`tasks_${user.id}`)) || [];
+        const userArticles = JSON.parse(localStorage.getItem(`articles_${user.id}`)) || [];
+        const userReport = localStorage.getItem(`report_${user.id}`) || '';
+        
+        exportData += '📋 TASKS:\n';
+        userTasks.forEach((task, index) => {
+            exportData += `  ${index + 1}. [${task.completed ? '✅' : '⬜'}] ${task.text}\n`;
+        });
+        
+        exportData += '\n📚 ARTICLES:\n';
+        userArticles.forEach((article, index) => {
+            exportData += `  ${index + 1}. ${article.title}\n`;
+        });
+        
+        exportData += '\n📝 REPORT SUMMARY:\n';
+        const wordCount = userReport.split(/\s+/).filter(w => w.length > 0).length;
+        exportData += `  Words: ${wordCount}\n`;
+        exportData += `  Characters: ${userReport.length}\n`;
+        exportData += `  Preview: ${userReport.substring(0, 200)}...\n`;
+        
+        exportData += '\n' + '='.repeat(60) + '\n\n';
+    });
+    
+    const blob = new Blob([exportData], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `wicked_problems_all_users_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showNotification('All users data exported!', 'success');
+}
+
+function backupAllUsersData() {
+    const predefinedUsers = JSON.parse(localStorage.getItem('wickedProblemsUsers')) || [];
+    const backup = {
+        timestamp: new Date().toISOString(),
+        users: predefinedUsers,
+        data: {}
+    };
+    
+    predefinedUsers.forEach(user => {
+        backup.data[user.id] = {
+            tasks: JSON.parse(localStorage.getItem(`tasks_${user.id}`)) || [],
+            articles: JSON.parse(localStorage.getItem(`articles_${user.id}`)) || [],
+            report: localStorage.getItem(`report_${user.id}`) || ''
+        };
+    });
+    
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `wicked_problems_backup_all_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showNotification('All users data backed up!', 'success');
+}
+
+function resetAllUsersData() {
+    if (!currentUser || !currentUser.isAdmin) return;
+    
+    if (confirm('WARNING: This will reset ALL users data (reports, tasks, articles). Are you sure?')) {
+        const predefinedUsers = JSON.parse(localStorage.getItem('wickedProblemsUsers')) || [];
+        predefinedUsers.forEach(user => {
+            localStorage.removeItem(`tasks_${user.id}`);
+            localStorage.removeItem(`articles_${user.id}`);
+            localStorage.removeItem(`report_${user.id}`);
+            localStorage.removeItem(`backup_${user.id}`);
+        });
+        
+        showNotification('All users data has been reset!', 'success');
+        loadAdminView();
+    }
+}
+
+// ====================
+// DATA EXPORT
+// ====================
+function exportAllData() {
+    const exportObj = {
+        user: currentUser,
+        tasks: userTasks,
+        articles: userArticles,
+        report: userReport,
+        exportedAt: new Date().toISOString(),
+        wordCount: userReport.split(/\s+/).filter(w => w.length > 0).length,
+        taskCompletion: `${userTasks.filter(t => t.completed).length}/${userTasks.length}`,
+        articleCount: userArticles.length
+    };
+    
+    const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `WickedProblems_${currentUser.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showNotification('All data exported successfully!', 'success');
+}
+
+// ====================
+// UTILITY FUNCTIONS
+// ====================
+function logout() {
+    // Save all data before logging out
+    saveAllData();
+    
+    // Clear only session data, NOT user work
+    localStorage.removeItem('currentUser');
+    
+    // Show confirmation
+    showNotification('All data saved! Redirecting to login...', 'success');
+    
+    // Redirect after delay
+    setTimeout(() => {
+        window.location.href = 'index.html';
+    }, 1500);
+}
+
+function checkPeerEvaluationReminder() {
+    const deadline = new Date('2026-01-23');
+    const today = new Date();
+    const daysUntilDeadline = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
+    
+    if (daysUntilDeadline <= 7 && daysUntilDeadline > 0) {
+        setTimeout(() => {
+            if (confirm(`⚠️ PEER EVALUATION REMINDER\n\nPeer evaluations are due in ${daysUntilDeadline} days (January 23, 2026).\n\nRemember to evaluate your teammates based on:\n• Task Support\n• Involvement\n• Quality of Work`)) {
+                showSection('dashboard');
+            }
+        }, 2000);
+    }
+}
+
+function showNotification(message, type = 'success') {
+    // Remove existing notifications
+    const existingNotifications = document.querySelectorAll('.custom-notification');
+    existingNotifications.forEach(notification => {
+        document.body.removeChild(notification);
+    });
+    
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = 'custom-notification';
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? 'var(--success)' : type === 'warning' ? 'var(--warning)' : 'var(--accent-blue)'};
+        color: ${type === 'success' || type === 'warning' ? 'white' : 'var(--primary-dark)'};
+        padding: 15px 20px;
+        border-radius: 8px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        z-index: 10000;
+        animation: slideIn 0.3s ease;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        max-width: 300px;
+    `;
+    
+    notification.innerHTML = `
+        <span>${type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️'}</span>
+        <span>${message}</span>
+    `;
+    document.body.appendChild(notification);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                document.body.removeChild(notification);
+            }
+        }, 300);
+    }, 3000);
+}
+
+// Clear localStorage (with confirmation)
+function clearLocalData() {
+    if (confirm('⚠️ WARNING: This will delete ALL your work in this browser!\n\nThis includes:\n• Your report\n• All tasks\n• All saved articles\n\nAre you absolutely sure? Export your data first!')) {
+        const userId = currentUser.id;
+        localStorage.removeItem(`tasks_${userId}`);
+        localStorage.removeItem(`articles_${userId}`);
+        localStorage.removeItem(`report_${userId}`);
+        localStorage.removeItem(`backup_${userId}`);
+        
+        userTasks = [];
+        userArticles = [];
+        userReport = '';
+        
+        updateTaskDisplay();
+        updateArticlesDisplay();
+        updateReportDisplay();
+        showNotification('All local data cleared!', 'warning');
+    }
+}
+
+// Add CSS animations for notifications
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+    
+    .pulse {
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.5;
+        }
+        100% {
+            opacity: 1;
+        }
+    }
+`;
+document.head.appendChild(style);

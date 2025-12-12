@@ -1560,6 +1560,14 @@ Remember to use ACS citation style for references."></textarea>
 
     <script>
        // ====================
+// SUPABASE CONFIGURATION
+// ====================
+const SUPABASE_URL = 'https://ofjcprgonnpihjavxacw.supabase.co'; // Replace with your actual URL
+const SUPABASE_ANON_KEY = 'sb_publishable_5r4L-8B7H6bUEeAyZzUcpQ_kEo6BEUg'; // Replace with your actual key
+
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ====================
 // GLOBAL VARIABLES
 // ====================
 let currentUser = null;
@@ -1573,7 +1581,7 @@ let isSaving = false;
 // ====================
 // INITIALIZATION
 // ====================
-window.onload = function() {
+window.onload = async function() {
     // Check if user is logged in
     const storedUser = localStorage.getItem('currentUser');
     if (!storedUser) {
@@ -1590,7 +1598,7 @@ window.onload = function() {
     }
 
     // Initialize all components
-    loadUserData();
+    await loadUserData();
     updateUI();
     setupAutoSave();
     updateLastSavedTime();
@@ -1628,6 +1636,239 @@ window.onload = function() {
 };
 
 // ====================
+// SUPABASE DATA FUNCTIONS
+// ====================
+async function loadUserData() {
+    if (!currentUser || !currentUser.id) {
+        console.error('No current user found');
+        return;
+    }
+    
+    const userId = currentUser.id;
+    
+    try {
+        // Load tasks from Supabase
+        const { data: tasksData, error: tasksError } = await supabase
+            .from('user_tasks')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: true });
+        
+        if (!tasksError) {
+            userTasks = tasksData.map(task => ({
+                text: task.task_text,
+                completed: task.completed,
+                createdAt: task.created_at,
+                id: task.id
+            }));
+        } else {
+            console.error('Error loading tasks from Supabase:', tasksError);
+            userTasks = [];
+        }
+        
+        // Load articles from Supabase
+        const { data: articlesData, error: articlesError } = await supabase
+            .from('user_articles')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+        
+        if (!articlesError) {
+            userArticles = articlesData.map(article => ({
+                title: article.title,
+                url: article.url,
+                category: article.category,
+                authors: article.authors,
+                addedAt: article.created_at,
+                id: article.id
+            }));
+        } else {
+            console.error('Error loading articles from Supabase:', articlesError);
+            userArticles = [];
+        }
+        
+        // Load report from Supabase
+        const { data: reportData, error: reportError } = await supabase
+            .from('user_reports')
+            .select('*')
+            .eq('user_id', userId)
+            .single();
+        
+        if (!reportError && reportData) {
+            userReport = reportData.content || "";
+        } else {
+            console.error('Error loading report from Supabase:', reportError);
+            userReport = "";
+        }
+        
+    } catch (e) {
+        console.error('Error loading data from Supabase:', e);
+        showNotification('Error loading data from cloud', 'warning');
+    }
+    
+    updateTaskDisplay();
+    updateArticlesDisplay();
+    updateReportDisplay();
+    updateDataStats();
+}
+
+async function saveAllData() {
+    if (!currentUser || !currentUser.id) {
+        console.error('No current user to save data for');
+        return;
+    }
+    
+    const userId = currentUser.id;
+    
+    // Save current report from editor
+    const editor = document.getElementById('reportEditor');
+    if (editor) {
+        userReport = editor.value;
+    }
+    
+    try {
+        isSaving = true;
+        
+        // Save tasks to Supabase
+        for (const task of userTasks) {
+            if (task.id) {
+                // Update existing task
+                await supabase
+                    .from('user_tasks')
+                    .update({
+                        task_text: task.text,
+                        completed: task.completed,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', task.id)
+                    .eq('user_id', userId);
+            } else {
+                // Insert new task
+                const { data, error } = await supabase
+                    .from('user_tasks')
+                    .insert({
+                        user_id: userId,
+                        task_text: task.text,
+                        completed: task.completed,
+                        created_at: new Date().toISOString()
+                    })
+                    .select()
+                    .single();
+                
+                if (!error && data) {
+                    task.id = data.id;
+                }
+            }
+        }
+        
+        // Save articles to Supabase
+        for (const article of userArticles) {
+            if (article.id) {
+                // Update existing article
+                await supabase
+                    .from('user_articles')
+                    .update({
+                        title: article.title,
+                        url: article.url,
+                        category: article.category,
+                        authors: article.authors,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', article.id)
+                    .eq('user_id', userId);
+            } else {
+                // Insert new article
+                const { data, error } = await supabase
+                    .from('user_articles')
+                    .insert({
+                        user_id: userId,
+                        title: article.title,
+                        url: article.url,
+                        category: article.category,
+                        authors: article.authors,
+                        created_at: new Date().toISOString()
+                    })
+                    .select()
+                    .single();
+                
+                if (!error && data) {
+                    article.id = data.id;
+                }
+            }
+        }
+        
+        // Save report to Supabase
+        const { data: existingReport, error: reportCheckError } = await supabase
+            .from('user_reports')
+            .select('id')
+            .eq('user_id', userId)
+            .single();
+        
+        if (existingReport) {
+            // Update existing report
+            await supabase
+                .from('user_reports')
+                .update({
+                    content: userReport,
+                    updated_at: new Date().toISOString(),
+                    word_count: userReport.split(/\s+/).filter(word => word.length > 0).length
+                })
+                .eq('id', existingReport.id)
+                .eq('user_id', userId);
+        } else {
+            // Insert new report
+            await supabase
+                .from('user_reports')
+                .insert({
+                    user_id: userId,
+                    content: userReport,
+                    word_count: userReport.split(/\s+/).filter(word => word.length > 0).length,
+                    created_at: new Date().toISOString()
+                });
+        }
+        
+        // Update UI
+        updateLastSavedTime();
+        showNotification('All data saved to cloud!', 'success');
+        updateDashboardStats();
+        updateDataStats();
+        
+        // Also save to localStorage as backup
+        localStorage.setItem(`tasks_${userId}`, JSON.stringify(userTasks));
+        localStorage.setItem(`articles_${userId}`, JSON.stringify(userArticles));
+        localStorage.setItem(`report_${userId}`, userReport);
+        
+    } catch (e) {
+        console.error('Error saving data to Supabase:', e);
+        showNotification('Error saving to cloud: ' + e.message, 'warning');
+    } finally {
+        isSaving = false;
+    }
+}
+
+async function deleteTaskFromSupabase(taskId) {
+    try {
+        await supabase
+            .from('user_tasks')
+            .delete()
+            .eq('id', taskId);
+    } catch (error) {
+        console.error('Error deleting task from Supabase:', error);
+    }
+}
+
+async function deleteArticleFromSupabase(articleId) {
+    try {
+        await supabase
+            .from('user_articles')
+            .delete()
+            .eq('id', articleId);
+    } catch (error) {
+        console.error('Error deleting article from Supabase:', error);
+    }
+}
+
+// ====================
 // AUTO-SAVE SYSTEM
 // ====================
 function setupAutoSave() {
@@ -1660,14 +1901,6 @@ function setupAutoSave() {
             scheduleSave();
         });
     }
-
-    // Add input listeners for article fields
-    ['articleTitle', 'articleUrl', 'articleAuthors', 'articleCategory'].forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.addEventListener('change', scheduleSave);
-        }
-    });
 }
 
 function setupSaveIndicator() {
@@ -1687,7 +1920,7 @@ function setupSaveIndicator() {
         
         if (saveStatus) {
             if (diff < 30) {
-                saveStatus.textContent = 'Saved just now';
+                saveStatus.textContent = 'Saved to cloud';
                 if (saveIndicator) saveIndicator.className = 'auto-save-indicator saved';
             } else if (diff < 60) {
                 saveStatus.textContent = 'Saved ' + diff + 's ago';
@@ -1746,234 +1979,527 @@ function hasUnsavedChanges() {
 }
 
 // ====================
-// DATA MANAGEMENT
+// TASK MANAGER FUNCTIONS
 // ====================
-function loadUserData() {
-    if (!currentUser || !currentUser.id) {
-        console.error('No current user found');
-        return;
+function updateTaskDisplay() {
+    const taskList = document.getElementById('taskList');
+    const completed = userTasks.filter(t => t.completed).length;
+    const total = userTasks.length;
+    const pending = total - completed;
+    
+    const totalTasksElement = document.getElementById('totalTasks');
+    const completedTasksElement = document.getElementById('completedTasks');
+    const pendingTasksElement = document.getElementById('pendingTasks');
+    
+    if (totalTasksElement) totalTasksElement.textContent = total;
+    if (completedTasksElement) completedTasksElement.textContent = completed;
+    if (pendingTasksElement) pendingTasksElement.textContent = pending;
+    
+    if (taskList) {
+        taskList.innerHTML = userTasks.map((task, index) => `
+            <li class="task-item ${task.completed ? 'completed' : ''}">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" ${task.completed ? 'checked' : ''} 
+                           onchange="toggleTask(${index})" style="cursor: pointer;">
+                    <span>${task.text || 'Untitled Task'}</span>
+                </div>
+                <div class="task-actions">
+                    <button onclick="editTask(${index})" title="Edit">✏️</button>
+                    <button onclick="deleteTask(${index})" title="Delete">🗑️</button>
+                </div>
+            </li>
+        `).join('');
     }
     
-    const userId = currentUser.id;
+    updateDashboardStats();
+}
+
+async function addTask() {
+    const input = document.getElementById('newTaskInput');
+    if (!input) return;
     
-    // Load tasks
-    try {
-        const storedTasks = localStorage.getItem(`tasks_${userId}`);
-        userTasks = storedTasks ? JSON.parse(storedTasks) : [];
-    } catch (e) {
-        console.error('Error loading tasks:', e);
-        userTasks = [];
+    const text = input.value.trim();
+    
+    if (text) {
+        userTasks.push({
+            text: text,
+            completed: false,
+            createdAt: new Date().toISOString()
+        });
+        
+        input.value = '';
+        await saveAllData();
+        updateTaskDisplay();
+        showNotification('Task added and saved to cloud!', 'success');
     }
-    
-    // Load articles
-    try {
-        const storedArticles = localStorage.getItem(`articles_${userId}`);
-        userArticles = storedArticles ? JSON.parse(storedArticles) : [];
-    } catch (e) {
-        console.error('Error loading articles:', e);
-        userArticles = [];
+}
+
+async function toggleTask(index) {
+    if (index >= 0 && index < userTasks.length) {
+        userTasks[index].completed = !userTasks[index].completed;
+        await saveAllData();
+        updateTaskDisplay();
     }
-    
-    // Load report
-    try {
-        const storedReport = localStorage.getItem(`report_${userId}`);
-        userReport = storedReport || "";
-    } catch (e) {
-        console.error('Error loading report:', e);
-        userReport = "";
+}
+
+async function editTask(index) {
+    if (index >= 0 && index < userTasks.length) {
+        const newText = prompt('Edit task:', userTasks[index].text);
+        if (newText !== null && newText.trim()) {
+            userTasks[index].text = newText.trim();
+            await saveAllData();
+            updateTaskDisplay();
+        }
     }
+}
+
+async function deleteTask(index) {
+    if (index >= 0 && index < userTasks.length) {
+        if (confirm('Delete this task?')) {
+            const taskId = userTasks[index].id;
+            userTasks.splice(index, 1);
+            
+            if (taskId) {
+                await deleteTaskFromSupabase(taskId);
+            }
+            
+            await saveAllData();
+            updateTaskDisplay();
+        }
+    }
+}
+
+async function resetToDefaultTasks() {
+    const defaultTasks = [
+        { text: "Literature Review: Critical Raw Materials", completed: false },
+        { text: "Chemical Analysis: Battery Components", completed: false },
+        { text: "ACS Referencing and Citations", completed: false },
+        { text: "Supply Chain Mapping", completed: false },
+        { text: "Environmental Impact Assessment", completed: false },
+        { text: "Future Alternatives Research", completed: false },
+        { text: "Draft Introduction Section", completed: false },
+        { text: "Complete Methodology Section", completed: false },
+        { text: "Write Results Analysis", completed: false },
+        { text: "Peer Evaluation Forms", completed: false },
+        { text: "Final Report Compilation", completed: false },
+        { text: "Proofread and Format", completed: false }
+    ];
     
-    // Check for backup
-    const backup = localStorage.getItem(`backup_${userId}`);
-    if (backup && userTasks.length === 0 && userArticles.length === 0 && userReport === "") {
-        if (confirm('Found a backup of your data. Restore it?')) {
-            restoreFromBackup();
-            return;
+    // Delete existing tasks from Supabase
+    for (const task of userTasks) {
+        if (task.id) {
+            await deleteTaskFromSupabase(task.id);
         }
     }
     
+    userTasks = defaultTasks;
+    await saveAllData();
     updateTaskDisplay();
-    updateArticlesDisplay();
-    updateReportDisplay();
-    updateDataStats();
+    showNotification('Reset to default tasks!', 'success');
 }
 
-function saveAllData() {
-    if (!currentUser || !currentUser.id) {
-        console.error('No current user to save data for');
+async function clearAllTasks() {
+    if (confirm('Clear all tasks? This cannot be undone.')) {
+        // Delete all tasks from Supabase
+        for (const task of userTasks) {
+            if (task.id) {
+                await deleteTaskFromSupabase(task.id);
+            }
+        }
+        
+        userTasks = [];
+        await saveAllData();
+        updateTaskDisplay();
+    }
+}
+
+// ====================
+// LITERATURE REPOSITORY FUNCTIONS
+// ====================
+function updateArticlesDisplay(filter = 'all') {
+    const articlesList = document.getElementById('articlesList');
+    if (!articlesList) return;
+    
+    let filteredArticles = userArticles;
+    
+    if (filter !== 'all') {
+        filteredArticles = userArticles.filter(article => article.category === filter);
+    }
+    
+    articlesList.innerHTML = filteredArticles.map((article, index) => `
+        <div class="article-item ${article.category}">
+            <div class="article-title">${article.title || 'Untitled Article'}</div>
+            <div class="article-meta">
+                ${article.authors ? `Authors: ${article.authors} | ` : ''}
+                Category: ${getCategoryName(article.category)}
+                ${article.addedAt ? ` | Added: ${new Date(article.addedAt).toLocaleDateString()}` : ''}
+            </div>
+            ${article.url ? `<div style="margin-top: 5px;">
+                <a href="${article.url}" target="_blank" style="color: var(--accent-blue); font-size: 12px;">
+                    🔗 ${article.url}
+                </a>
+            </div>` : ''}
+            <div class="task-actions" style="margin-top: 10px;">
+                <button onclick="editArticle(${index})" title="Edit">✏️</button>
+                <button onclick="deleteArticle(${index})" title="Delete">🗑️</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function getCategoryName(category) {
+    const categories = {
+        'anode': 'Anode Chemistry',
+        'cathode': 'Cathode Materials',
+        'geopolitical': 'Geopolitical Constraints',
+        'recycling': 'Recycling Processes',
+        'other': 'Other'
+    };
+    return categories[category] || category;
+}
+
+function filterArticles(category) {
+    // Update active tab
+    document.querySelectorAll('.category-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    if (event && event.target) {
+        event.target.classList.add('active');
+    }
+    
+    updateArticlesDisplay(category);
+}
+
+async function addArticle() {
+    const titleInput = document.getElementById('articleTitle');
+    const urlInput = document.getElementById('articleUrl');
+    const categoryInput = document.getElementById('articleCategory');
+    const authorsInput = document.getElementById('articleAuthors');
+    
+    if (!titleInput) return;
+    
+    const title = titleInput.value.trim();
+    const url = urlInput ? urlInput.value.trim() : '';
+    const category = categoryInput ? categoryInput.value : 'other';
+    const authors = authorsInput ? authorsInput.value.trim() : '';
+    
+    if (!title) {
+        showNotification('Please enter article title!', 'warning');
         return;
     }
     
-    const userId = currentUser.id;
+    userArticles.push({
+        title: title,
+        url: url || null,
+        category: category,
+        authors: authors || null,
+        addedAt: new Date().toISOString()
+    });
     
-    // Save current report from editor
+    // Clear form
+    titleInput.value = '';
+    if (urlInput) urlInput.value = '';
+    if (authorsInput) authorsInput.value = '';
+    
+    await saveAllData();
+    updateArticlesDisplay();
+    updateDashboardStats();
+    showNotification('Article added and saved to cloud!', 'success');
+}
+
+async function editArticle(index) {
+    if (index >= 0 && index < userArticles.length) {
+        const article = userArticles[index];
+        const newTitle = prompt('Edit article title:', article.title);
+        if (newTitle !== null && newTitle.trim()) {
+            userArticles[index].title = newTitle.trim();
+            const newUrl = prompt('Edit URL (or leave empty):', article.url || '');
+            userArticles[index].url = newUrl.trim() || null;
+            const newAuthors = prompt('Edit authors:', article.authors || '');
+            userArticles[index].authors = newAuthors.trim() || null;
+            await saveAllData();
+            updateArticlesDisplay();
+        }
+    }
+}
+
+async function deleteArticle(index) {
+    if (index >= 0 && index < userArticles.length) {
+        if (confirm('Delete this article from repository?')) {
+            const articleId = userArticles[index].id;
+            userArticles.splice(index, 1);
+            
+            if (articleId) {
+                await deleteArticleFromSupabase(articleId);
+            }
+            
+            await saveAllData();
+            updateArticlesDisplay();
+        }
+    }
+}
+
+// ====================
+// REPORT EDITOR FUNCTIONS
+// ====================
+function updateReportDisplay() {
+    const editor = document.getElementById('reportEditor');
+    if (editor) {
+        editor.value = userReport;
+        updateWordCount();
+    }
+}
+
+function updateWordCount() {
+    const editor = document.getElementById('reportEditor');
+    if (!editor) return;
+    
+    const text = editor.value;
+    const wordCount = text.split(/\s+/).filter(word => word.length > 0).length;
+    const pageCount = Math.ceil(wordCount / 300);
+    const progressPercent = Math.min(100, (wordCount / 3000) * 100);
+    
+    const wordCountElement = document.getElementById('wordCount');
+    const pageCountElement = document.getElementById('pageCount');
+    const wordProgressBar = document.getElementById('wordProgressBar');
+    
+    if (wordCountElement) wordCountElement.textContent = wordCount;
+    if (pageCountElement) pageCountElement.textContent = pageCount;
+    
+    if (wordProgressBar) {
+        wordProgressBar.style.width = `${progressPercent}%`;
+        
+        // Update progress bar color based on completion
+        if (progressPercent >= 100) {
+            wordProgressBar.style.background = 'var(--success)';
+        } else if (progressPercent >= 70) {
+            wordProgressBar.style.background = 'var(--accent-blue)';
+        } else {
+            wordProgressBar.style.background = 'var(--warning)';
+        }
+    }
+}
+
+async function saveReport() {
     const editor = document.getElementById('reportEditor');
     if (editor) {
         userReport = editor.value;
+        await saveAllData();
     }
+}
+
+// ====================
+// ADMIN FUNCTIONS WITH SUPABASE
+// ====================
+async function loadAdminView() {
+    if (!currentUser || !currentUser.isAdmin) return;
+    
+    const adminGrid = document.getElementById('adminUsersGrid');
+    if (!adminGrid) return;
     
     try {
-        // Save to localStorage
-        localStorage.setItem(`tasks_${userId}`, JSON.stringify(userTasks));
-        localStorage.setItem(`articles_${userId}`, JSON.stringify(userArticles));
-        localStorage.setItem(`report_${userId}`, userReport);
+        adminGrid.innerHTML = '<div class="loading">Loading user data from cloud...</div>';
         
-        // Create backup
-        createBackup();
+        // Load all users from Supabase
+        const { data: users, error: usersError } = await supabase
+            .from('users')
+            .select('*');
         
-        // Update UI
-        updateLastSavedTime();
-        showNotification('All data saved successfully!', 'success');
-        updateDashboardStats();
-        updateDataStats();
-    } catch (e) {
-        console.error('Error saving data:', e);
-        showNotification('Error saving data: ' + e.message, 'warning');
+        if (usersError) throw usersError;
+        
+        if (!users || users.length === 0) {
+            adminGrid.innerHTML = '<div class="no-data">No users found in Supabase</div>';
+            return;
+        }
+        
+        // Load data for each user
+        const adminHTML = await Promise.all(users.map(async (user) => {
+            // Load user's tasks
+            const { data: tasksData } = await supabase
+                .from('user_tasks')
+                .select('*')
+                .eq('user_id', user.id);
+            
+            const userTasks = tasksData || [];
+            const completedTasks = userTasks.filter(t => t.completed).length;
+            
+            // Load user's articles
+            const { data: articlesData } = await supabase
+                .from('user_articles')
+                .select('*')
+                .eq('user_id', user.id);
+            
+            const userArticles = articlesData || [];
+            
+            // Load user's report
+            const { data: reportData } = await supabase
+                .from('user_reports')
+                .select('content')
+                .eq('user_id', user.id)
+                .single();
+            
+            const userReport = reportData?.content || '';
+            const wordCount = userReport.split(/\s+/).filter(w => w.length > 0).length;
+            
+            return `
+                <div class="admin-user-card">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div>
+                            <h4>${user.name || 'Unknown User'}</h4>
+                            <p style="font-size: 12px; color: var(--accent-light);">${user.email || 'No email'}</p>
+                            <span class="user-role ${user.role || 'user'}" style="margin-top: 5px;">${(user.role || 'user').toUpperCase()}</span>
+                        </div>
+                        <button class="btn btn-secondary btn-small" onclick="viewUserData('${user.id}')">
+                            View Data
+                        </button>
+                    </div>
+                    
+                    <div style="margin-top: 15px; font-size: 12px;">
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                            <div>
+                                <div style="color: var(--accent-light);">Report</div>
+                                <div style="color: var(--accent-blue);">${wordCount} words</div>
+                            </div>
+                            <div>
+                                <div style="color: var(--accent-light);">Tasks</div>
+                                <div style="color: var(--accent-blue);">${completedTasks}/${userTasks.length}</div>
+                            </div>
+                            <div>
+                                <div style="color: var(--accent-light);">Articles</div>
+                                <div style="color: var(--accent-blue);">${userArticles.length}</div>
+                            </div>
+                            <div>
+                                <div style="color: var(--accent-light);">User ID</div>
+                                <div style="color: var(--accent-blue); font-size: 10px;">${user.id.substring(0, 8)}...</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 15px; display: flex; gap: 10px;">
+                        <button class="btn btn-secondary btn-small" onclick="exportUserData('${user.id}')">
+                            Export
+                        </button>
+                        <button class="btn btn-warning btn-small" onclick="resetUserData('${user.id}')">
+                            Reset
+                        </button>
+                    </div>
+                </div>
+            `;
+        }));
+        
+        adminGrid.innerHTML = adminHTML.join('');
+        
+    } catch (error) {
+        console.error('Error loading admin data:', error);
+        adminGrid.innerHTML = `<div class="error">Error loading admin data: ${error.message}</div>`;
     }
 }
 
-function saveUserData() {
-    saveAllData();
+async function viewUserData(userId) {
+    try {
+        // Load user's tasks
+        const { data: tasksData } = await supabase
+            .from('user_tasks')
+            .select('*')
+            .eq('user_id', userId);
+        
+        // Load user's articles
+        const { data: articlesData } = await supabase
+            .from('user_articles')
+            .select('*')
+            .eq('user_id', userId);
+        
+        // Load user's report
+        const { data: reportData } = await supabase
+            .from('user_reports')
+            .select('content')
+            .eq('user_id', userId)
+            .single();
+        
+        const userTasks = tasksData || [];
+        const userArticles = articlesData || [];
+        const userReport = reportData?.content || '';
+        
+        let message = `👤 USER DATA REPORT FROM CLOUD\n\n`;
+        message += `Tasks (${userTasks.length}):\n`;
+        userTasks.forEach((task, index) => {
+            message += `  ${index + 1}. [${task.completed ? '✅' : '⬜'}] ${task.task_text}\n`;
+        });
+        
+        message += `\nArticles (${userArticles.length}):\n`;
+        userArticles.forEach((article, index) => {
+            message += `  ${index + 1}. ${article.title}\n`;
+        });
+        
+        message += `\nReport Summary:\n`;
+        const wordCount = userReport.split(/\s+/).filter(w => w.length > 0).length;
+        message += `  ${wordCount} words (${Math.ceil(wordCount/300)} pages)\n`;
+        message += `  ${userReport.length} characters\n`;
+        message += `  ${wordCount >= 3000 ? '✅ Target reached' : `❌ Needs ${3000 - wordCount} more words`}\n`;
+        
+        alert(message);
+        
+    } catch (error) {
+        console.error('Error viewing user data:', error);
+        showNotification('Error loading user data: ' + error.message, 'warning');
+    }
 }
 
 // ====================
-// BACKUP & RECOVERY
+// OTHER FUNCTIONS (keep the same but remove localStorage references)
 // ====================
-function createBackup() {
-    if (!currentUser || !currentUser.id) return;
+function showSection(sectionId) {
+    // Save current data before switching sections
+    if (hasUnsavedChanges()) {
+        saveReport();
+    }
     
-    const userId = currentUser.id;
-    const backupData = {
-        tasks: userTasks,
-        articles: userArticles,
-        report: userReport,
-        timestamp: new Date().toISOString(),
-        browserId: localStorage.getItem('browserId') || 'unknown'
+    // Hide all sections
+    document.querySelectorAll('.content-area').forEach(section => {
+        section.classList.remove('active');
+    });
+    
+    // Remove active class from all nav items
+    document.querySelectorAll('.nav-menu a').forEach(link => {
+        link.classList.remove('active');
+    });
+    
+    // Show selected section
+    const sectionElement = document.getElementById(sectionId);
+    if (sectionElement) {
+        sectionElement.classList.add('active');
+    }
+    
+    // Update active nav item
+    const navLink = document.querySelector(`.nav-menu a[href="#${sectionId}"]`);
+    if (navLink) {
+        navLink.classList.add('active');
+    }
+    
+    // Update section title
+    const titles = {
+        'dashboard': 'Dashboard',
+        'report': 'Report Editor',
+        'tasks': 'Task Manager',
+        'literature': 'Literature Repository',
+        'chemistry': 'Chemistry Toolkit',
+        'references': 'ACS Reference Generator',
+        'backup': 'Data Backup',
+        'admin': 'Admin Panel'
     };
     
-    localStorage.setItem(`backup_${userId}`, JSON.stringify(backupData));
-    
-    // Keep only last 5 backups
-    let backupCount = 0;
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key.startsWith(`backup_${userId}_`)) {
-            backupCount++;
-            if (backupCount > 5) {
-                localStorage.removeItem(key);
-            }
-        }
+    const sectionTitleElement = document.getElementById('sectionTitle');
+    if (sectionTitleElement) {
+        sectionTitleElement.textContent = titles[sectionId] || sectionId;
     }
     
-    console.log('Backup created at:', backupData.timestamp);
-}
-
-function restoreFromBackup() {
-    if (!currentUser || !currentUser.id) return;
-    
-    const userId = currentUser.id;
-    const backup = localStorage.getItem(`backup_${userId}`);
-    
-    if (!backup) {
-        showNotification('No backup found to restore!', 'warning');
-        return;
-    }
-    
-    if (confirm('Restore from backup? This will replace your current data.')) {
-        try {
-            const backupData = JSON.parse(backup);
-            userTasks = backupData.tasks || [];
-            userArticles = backupData.articles || [];
-            userReport = backupData.report || '';
-            
-            saveAllData();
-            updateTaskDisplay();
-            updateArticlesDisplay();
-            updateReportDisplay();
-            showNotification('Data restored from backup!', 'success');
-        } catch (e) {
-            showNotification('Error restoring backup: ' + e.message, 'warning');
-        }
+    // Special handling for admin section
+    if (sectionId === 'admin' && currentUser && currentUser.isAdmin) {
+        loadAdminView();
     }
 }
 
-function updateDataStats() {
-    const statsDiv = document.getElementById('dataStats');
-    if (!statsDiv) return;
-    
-    const reportSize = new Blob([userReport]).size;
-    const tasksSize = new Blob([JSON.stringify(userTasks)]).size;
-    const articlesSize = new Blob([JSON.stringify(userArticles)]).size;
-    const totalSize = (reportSize + tasksSize + articlesSize) / 1024; // KB
-    
-    const backup = localStorage.getItem(`backup_${currentUser.id}`);
-    const hasBackup = backup ? '✅' : '❌';
-    
-    statsDiv.innerHTML = `
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-            <div>
-                <div style="color: var(--accent-light); font-size: 12px;">Report Size</div>
-                <div style="color: var(--accent-blue);">${(reportSize / 1024).toFixed(2)} KB</div>
-            </div>
-            <div>
-                <div style="color: var(--accent-light); font-size: 12px;">Tasks</div>
-                <div style="color: var(--accent-blue);">${userTasks.length}</div>
-            </div>
-            <div>
-                <div style="color: var(--accent-light); font-size: 12px;">Articles</div>
-                <div style="color: var(--accent-blue);">${userArticles.length}</div>
-            </div>
-            <div>
-                <div style="color: var(--accent-light); font-size: 12px;">Backup</div>
-                <div style="color: var(--accent-blue);">${hasBackup}</div>
-            </div>
-        </div>
-        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
-            <div style="color: var(--accent-light); font-size: 12px;">Total Storage Used</div>
-            <div style="color: var(--accent-blue); font-size: 18px; font-weight: bold;">${totalSize.toFixed(2)} KB</div>
-            <div style="font-size: 11px; color: var(--accent-light);">
-                ${((totalSize / (5 * 1024)) * 100).toFixed(1)}% of 5MB limit
-            </div>
-        </div>
-    `;
-}
-
-function showStorageInfo() {
-    let totalSize = 0;
-    let itemCount = 0;
-    
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        const value = localStorage.getItem(key);
-        totalSize += (key.length + value.length) * 2; // Approximate size in bytes
-        itemCount++;
-    }
-    
-    const info = `
-💾 BROWSER STORAGE INFORMATION:
-
-Total items: ${itemCount}
-Total size: ${(totalSize / 1024).toFixed(2)} KB
-Storage limit: ~5 MB
-Usage: ${((totalSize / (5 * 1024 * 1024)) * 100).toFixed(1)}%
-
-📁 YOUR DATA:
-- Report: ${(new Blob([userReport]).size / 1024).toFixed(2)} KB
-- Tasks: ${userTasks.length} items
-- Articles: ${userArticles.length} items
-
-⚠️ REMEMBER:
-- Data is browser-specific
-- Export regularly for safety
-- Use same browser always
-    `;
-    
-    alert(info);
-}
-
-// ====================
-// UI UPDATES
-// ====================
 function updateUI() {
     if (!currentUser) return;
     
@@ -2129,728 +2655,17 @@ function updateDashboardStats() {
 }
 
 // ====================
-// SECTION NAVIGATION
-// ====================
-function showSection(sectionId) {
-    // Save current data before switching sections
-    if (hasUnsavedChanges()) {
-        saveReport();
-    }
-    
-    // Hide all sections
-    document.querySelectorAll('.content-area').forEach(section => {
-        section.classList.remove('active');
-    });
-    
-    // Remove active class from all nav items
-    document.querySelectorAll('.nav-menu a').forEach(link => {
-        link.classList.remove('active');
-    });
-    
-    // Show selected section
-    const sectionElement = document.getElementById(sectionId);
-    if (sectionElement) {
-        sectionElement.classList.add('active');
-    }
-    
-    // Update active nav item
-    const navLink = document.querySelector(`.nav-menu a[href="#${sectionId}"]`);
-    if (navLink) {
-        navLink.classList.add('active');
-    }
-    
-    // Update section title
-    const titles = {
-        'dashboard': 'Dashboard',
-        'report': 'Report Editor',
-        'tasks': 'Task Manager',
-        'literature': 'Literature Repository',
-        'chemistry': 'Chemistry Toolkit',
-        'references': 'ACS Reference Generator',
-        'backup': 'Data Backup',
-        'admin': 'Admin Panel'
-    };
-    
-    const sectionTitleElement = document.getElementById('sectionTitle');
-    if (sectionTitleElement) {
-        sectionTitleElement.textContent = titles[sectionId] || sectionId;
-    }
-    
-    // Special handling for admin section
-    if (sectionId === 'admin' && currentUser && currentUser.isAdmin) {
-        loadAdminView();
-    }
-}
-
-// ====================
-// REPORT EDITOR FUNCTIONS
-// ====================
-function updateReportDisplay() {
-    const editor = document.getElementById('reportEditor');
-    if (editor) {
-        editor.value = userReport;
-        updateWordCount();
-    }
-}
-
-function updateWordCount() {
-    const editor = document.getElementById('reportEditor');
-    if (!editor) return;
-    
-    const text = editor.value;
-    const wordCount = text.split(/\s+/).filter(word => word.length > 0).length;
-    const pageCount = Math.ceil(wordCount / 300);
-    const progressPercent = Math.min(100, (wordCount / 3000) * 100);
-    
-    const wordCountElement = document.getElementById('wordCount');
-    const pageCountElement = document.getElementById('pageCount');
-    const wordProgressBar = document.getElementById('wordProgressBar');
-    
-    if (wordCountElement) wordCountElement.textContent = wordCount;
-    if (pageCountElement) pageCountElement.textContent = pageCount;
-    
-    if (wordProgressBar) {
-        wordProgressBar.style.width = `${progressPercent}%`;
-        
-        // Update progress bar color based on completion
-        if (progressPercent >= 100) {
-            wordProgressBar.style.background = 'var(--success)';
-        } else if (progressPercent >= 70) {
-            wordProgressBar.style.background = 'var(--accent-blue)';
-        } else {
-            wordProgressBar.style.background = 'var(--warning)';
-        }
-    }
-}
-
-function saveReport() {
-    const editor = document.getElementById('reportEditor');
-    if (editor) {
-        userReport = editor.value;
-        saveAllData();
-    }
-}
-
-function exportReportPDF() {
-    const text = userReport;
-    if (!text || text.trim() === '') {
-        showNotification('No report content to export!', 'warning');
-        return;
-    }
-    
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `WickedProblems_Report_${currentUser.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    showNotification('Report exported as text file!', 'success');
-}
-
-function copyReportToClipboard() {
-    const text = userReport;
-    if (!text || text.trim() === '') {
-        showNotification('No report content to copy!', 'warning');
-        return;
-    }
-    
-    navigator.clipboard.writeText(text).then(() => {
-        showNotification('Report copied to clipboard!', 'success');
-    }).catch(err => {
-        console.error('Failed to copy:', err);
-        showNotification('Failed to copy to clipboard', 'warning');
-    });
-}
-
-function clearReport() {
-    if (confirm('Are you sure you want to clear the entire report? This cannot be undone.')) {
-        const editor = document.getElementById('reportEditor');
-        if (editor) {
-            editor.value = '';
-        }
-        userReport = '';
-        saveReport();
-        updateWordCount();
-    }
-}
-
-// ====================
-// TASK MANAGER FUNCTIONS
-// ====================
-function updateTaskDisplay() {
-    const taskList = document.getElementById('taskList');
-    const completed = userTasks.filter(t => t.completed).length;
-    const total = userTasks.length;
-    const pending = total - completed;
-    
-    const totalTasksElement = document.getElementById('totalTasks');
-    const completedTasksElement = document.getElementById('completedTasks');
-    const pendingTasksElement = document.getElementById('pendingTasks');
-    
-    if (totalTasksElement) totalTasksElement.textContent = total;
-    if (completedTasksElement) completedTasksElement.textContent = completed;
-    if (pendingTasksElement) pendingTasksElement.textContent = pending;
-    
-    if (taskList) {
-        taskList.innerHTML = userTasks.map((task, index) => `
-            <li class="task-item ${task.completed ? 'completed' : ''}">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <input type="checkbox" ${task.completed ? 'checked' : ''} 
-                           onchange="toggleTask(${index})" style="cursor: pointer;">
-                    <span>${task.text || 'Untitled Task'}</span>
-                </div>
-                <div class="task-actions">
-                    <button onclick="editTask(${index})" title="Edit">✏️</button>
-                    <button onclick="deleteTask(${index})" title="Delete">🗑️</button>
-                </div>
-            </li>
-        `).join('');
-    }
-    
-    updateDashboardStats();
-}
-
-function addTask() {
-    const input = document.getElementById('newTaskInput');
-    if (!input) return;
-    
-    const text = input.value.trim();
-    
-    if (text) {
-        userTasks.push({
-            text: text,
-            completed: false,
-            createdAt: new Date().toISOString()
-        });
-        
-        input.value = '';
-        saveTasks();
-        updateTaskDisplay();
-        showNotification('Task added!', 'success');
-    }
-}
-
-function toggleTask(index) {
-    if (index >= 0 && index < userTasks.length) {
-        userTasks[index].completed = !userTasks[index].completed;
-        saveTasks();
-        updateTaskDisplay();
-    }
-}
-
-function editTask(index) {
-    if (index >= 0 && index < userTasks.length) {
-        const newText = prompt('Edit task:', userTasks[index].text);
-        if (newText !== null && newText.trim()) {
-            userTasks[index].text = newText.trim();
-            saveTasks();
-            updateTaskDisplay();
-        }
-    }
-}
-
-function deleteTask(index) {
-    if (index >= 0 && index < userTasks.length) {
-        if (confirm('Delete this task?')) {
-            userTasks.splice(index, 1);
-            saveTasks();
-            updateTaskDisplay();
-        }
-    }
-}
-
-function saveTasks() {
-    scheduleSave();
-}
-
-function resetToDefaultTasks() {
-    const defaultTasks = [
-        { text: "Literature Review: Critical Raw Materials", completed: false },
-        { text: "Chemical Analysis: Battery Components", completed: false },
-        { text: "ACS Referencing and Citations", completed: false },
-        { text: "Supply Chain Mapping", completed: false },
-        { text: "Environmental Impact Assessment", completed: false },
-        { text: "Future Alternatives Research", completed: false },
-        { text: "Draft Introduction Section", completed: false },
-        { text: "Complete Methodology Section", completed: false },
-        { text: "Write Results Analysis", completed: false },
-        { text: "Peer Evaluation Forms", completed: false },
-        { text: "Final Report Compilation", completed: false },
-        { text: "Proofread and Format", completed: false }
-    ];
-    
-    userTasks = defaultTasks;
-    saveTasks();
-    updateTaskDisplay();
-    showNotification('Reset to default tasks!', 'success');
-}
-
-function clearAllTasks() {
-    if (confirm('Clear all tasks? This cannot be undone.')) {
-        userTasks = [];
-        saveTasks();
-        updateTaskDisplay();
-    }
-}
-
-// ====================
-// LITERATURE REPOSITORY
-// ====================
-function updateArticlesDisplay(filter = 'all') {
-    const articlesList = document.getElementById('articlesList');
-    if (!articlesList) return;
-    
-    let filteredArticles = userArticles;
-    
-    if (filter !== 'all') {
-        filteredArticles = userArticles.filter(article => article.category === filter);
-    }
-    
-    articlesList.innerHTML = filteredArticles.map((article, index) => `
-        <div class="article-item ${article.category}">
-            <div class="article-title">${article.title || 'Untitled Article'}</div>
-            <div class="article-meta">
-                ${article.authors ? `Authors: ${article.authors} | ` : ''}
-                Category: ${getCategoryName(article.category)}
-                ${article.addedAt ? ` | Added: ${new Date(article.addedAt).toLocaleDateString()}` : ''}
-            </div>
-            ${article.url ? `<div style="margin-top: 5px;">
-                <a href="${article.url}" target="_blank" style="color: var(--accent-blue); font-size: 12px;">
-                    🔗 ${article.url}
-                </a>
-            </div>` : ''}
-            <div class="task-actions" style="margin-top: 10px;">
-                <button onclick="editArticle(${index})" title="Edit">✏️</button>
-                <button onclick="deleteArticle(${index})" title="Delete">🗑️</button>
-            </div>
-        </div>
-    `).join('');
-}
-
-function getCategoryName(category) {
-    const categories = {
-        'anode': 'Anode Chemistry',
-        'cathode': 'Cathode Materials',
-        'geopolitical': 'Geopolitical Constraints',
-        'recycling': 'Recycling Processes',
-        'other': 'Other'
-    };
-    return categories[category] || category;
-}
-
-function filterArticles(category) {
-    // Update active tab
-    document.querySelectorAll('.category-tab').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    
-    if (event && event.target) {
-        event.target.classList.add('active');
-    }
-    
-    updateArticlesDisplay(category);
-}
-
-function addArticle() {
-    const titleInput = document.getElementById('articleTitle');
-    const urlInput = document.getElementById('articleUrl');
-    const categoryInput = document.getElementById('articleCategory');
-    const authorsInput = document.getElementById('articleAuthors');
-    
-    if (!titleInput) return;
-    
-    const title = titleInput.value.trim();
-    const url = urlInput ? urlInput.value.trim() : '';
-    const category = categoryInput ? categoryInput.value : 'other';
-    const authors = authorsInput ? authorsInput.value.trim() : '';
-    
-    if (!title) {
-        showNotification('Please enter article title!', 'warning');
-        return;
-    }
-    
-    userArticles.push({
-        title: title,
-        url: url || null,
-        category: category,
-        authors: authors || null,
-        addedAt: new Date().toISOString()
-    });
-    
-    // Clear form
-    titleInput.value = '';
-    if (urlInput) urlInput.value = '';
-    if (authorsInput) authorsInput.value = '';
-    
-    saveArticles();
-    updateArticlesDisplay();
-    updateDashboardStats();
-    showNotification('Article added to repository!', 'success');
-}
-
-function editArticle(index) {
-    if (index >= 0 && index < userArticles.length) {
-        const article = userArticles[index];
-        const newTitle = prompt('Edit article title:', article.title);
-        if (newTitle !== null && newTitle.trim()) {
-            userArticles[index].title = newTitle.trim();
-            const newUrl = prompt('Edit URL (or leave empty):', article.url || '');
-            userArticles[index].url = newUrl.trim() || null;
-            const newAuthors = prompt('Edit authors:', article.authors || '');
-            userArticles[index].authors = newAuthors.trim() || null;
-            saveArticles();
-            updateArticlesDisplay();
-        }
-    }
-}
-
-function deleteArticle(index) {
-    if (index >= 0 && index < userArticles.length) {
-        if (confirm('Delete this article from repository?')) {
-            userArticles.splice(index, 1);
-            saveArticles();
-            updateArticlesDisplay();
-        }
-    }
-}
-
-function saveArticles() {
-    scheduleSave();
-}
-
-// ====================
-// ACS REFERENCE GENERATOR
-// ====================
-function generateACSReference() {
-    const authors = document.getElementById('refAuthors')?.value.trim() || '';
-    const year = document.getElementById('refYear')?.value.trim() || '';
-    const title = document.getElementById('refTitle')?.value.trim() || '';
-    const journal = document.getElementById('refJournal')?.value.trim() || '';
-    const volume = document.getElementById('refVolume')?.value.trim() || '';
-    const issue = document.getElementById('refIssue')?.value.trim() || '';
-    const pages = document.getElementById('refPages')?.value.trim() || '';
-    const doi = document.getElementById('refDOI')?.value.trim() || '';
-    
-    if (!authors || !year || !title || !journal || !volume || !pages) {
-        showNotification('Please fill in all required fields!', 'warning');
-        return;
-    }
-    
-    let reference = `${authors} ${title}. `;
-    reference += `<em>${journal}</em> `;
-    reference += `${year}, `;
-    reference += `<em>${volume}</em>`;
-    if (issue) reference += `(${issue})`;
-    reference += `, ${pages}.`;
-    if (doi) reference += ` DOI: ${doi}`;
-    
-    const generatedRefElement = document.getElementById('generatedReference');
-    if (generatedRefElement) {
-        generatedRefElement.value = reference;
-    }
-}
-
-function copyReference() {
-    const generatedRefElement = document.getElementById('generatedReference');
-    if (!generatedRefElement) return;
-    
-    const reference = generatedRefElement.value;
-    if (!reference) {
-        showNotification('No reference to copy!', 'warning');
-        return;
-    }
-    
-    navigator.clipboard.writeText(reference).then(() => {
-        showNotification('Reference copied to clipboard!', 'success');
-    }).catch(err => {
-        console.error('Failed to copy:', err);
-        showNotification('Failed to copy to clipboard', 'warning');
-    });
-}
-
-// ====================
-// ADMIN FUNCTIONS
-// ====================
-function loadAdminView() {
-    if (!currentUser || !currentUser.isAdmin) return;
-    
-    const adminGrid = document.getElementById('adminUsersGrid');
-    if (!adminGrid) return;
-    
-    const predefinedUsers = JSON.parse(localStorage.getItem('wickedProblemsUsers')) || [];
-    
-    adminGrid.innerHTML = predefinedUsers.map(user => {
-        // Load user data
-        const userTasks = JSON.parse(localStorage.getItem(`tasks_${user.id}`)) || [];
-        const userArticles = JSON.parse(localStorage.getItem(`articles_${user.id}`)) || [];
-        const userReport = localStorage.getItem(`report_${user.id}`) || '';
-        const wordCount = userReport.split(/\s+/).filter(w => w.length > 0).length;
-        const completedTasks = userTasks.filter(t => t.completed).length;
-        const hasBackup = localStorage.getItem(`backup_${user.id}`) ? '✅' : '❌';
-        
-        return `
-            <div class="admin-user-card">
-                <div style="display: flex; justify-content: space-between; align-items: start;">
-                    <div>
-                        <h4>${user.name || 'Unknown User'}</h4>
-                        <p style="font-size: 12px; color: var(--accent-light);">${user.email || 'No email'}</p>
-                        <span class="user-role ${user.role || 'user'}" style="margin-top: 5px;">${(user.role || 'user').toUpperCase()}</span>
-                    </div>
-                    <button class="btn btn-secondary btn-small" onclick="viewUserData(${user.id})">
-                        View Data
-                    </button>
-                </div>
-                
-                <div style="margin-top: 15px; font-size: 12px;">
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-                        <div>
-                            <div style="color: var(--accent-light);">Report</div>
-                            <div style="color: var(--accent-blue);">${wordCount} words</div>
-                        </div>
-                        <div>
-                            <div style="color: var(--accent-light);">Tasks</div>
-                            <div style="color: var(--accent-blue);">${completedTasks}/${userTasks.length}</div>
-                        </div>
-                        <div>
-                            <div style="color: var(--accent-light);">Articles</div>
-                            <div style="color: var(--accent-blue);">${userArticles.length}</div>
-                        </div>
-                        <div>
-                            <div style="color: var(--accent-light);">Backup</div>
-                            <div style="color: var(--accent-blue);">${hasBackup}</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="margin-top: 15px; display: flex; gap: 10px;">
-                    <button class="btn btn-secondary btn-small" onclick="exportUserData(${user.id})">
-                        Export
-                    </button>
-                    <button class="btn btn-warning btn-small" onclick="resetUserData(${user.id})">
-                        Reset
-                    </button>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-function viewUserData(userId) {
-    const userTasks = JSON.parse(localStorage.getItem(`tasks_${userId}`)) || [];
-    const userArticles = JSON.parse(localStorage.getItem(`articles_${userId}`)) || [];
-    const userReport = localStorage.getItem(`report_${userId}`) || '';
-    
-    let message = `👤 USER DATA REPORT\n\n`;
-    message += `Tasks (${userTasks.length}):\n`;
-    userTasks.forEach((task, index) => {
-        message += `  ${index + 1}. [${task.completed ? '✅' : '⬜'}] ${task.text}\n`;
-    });
-    
-    message += `\nArticles (${userArticles.length}):\n`;
-    userArticles.forEach((article, index) => {
-        message += `  ${index + 1}. ${article.title}\n`;
-    });
-    
-    message += `\nReport Summary:\n`;
-    const wordCount = userReport.split(/\s+/).filter(w => w.length > 0).length;
-    message += `  ${wordCount} words (${Math.ceil(wordCount/300)} pages)\n`;
-    message += `  ${userReport.length} characters\n`;
-    message += `  ${wordCount >= 3000 ? '✅ Target reached' : `❌ Needs ${3000 - wordCount} more words`}\n`;
-    
-    alert(message);
-}
-
-function exportUserData(userId) {
-    const predefinedUsers = JSON.parse(localStorage.getItem('wickedProblemsUsers')) || [];
-    const user = predefinedUsers.find(u => u.id === userId);
-    if (!user) return;
-    
-    const userTasks = JSON.parse(localStorage.getItem(`tasks_${userId}`)) || [];
-    const userArticles = JSON.parse(localStorage.getItem(`articles_${userId}`)) || [];
-    const userReport = localStorage.getItem(`report_${userId}`) || '';
-    
-    let exportData = `WICKED PROBLEMS HUB - USER DATA EXPORT\n`;
-    exportData += `User: ${user.name} (${user.email})\n`;
-    exportData += `Role: ${user.role}\n`;
-    exportData += `Exported: ${new Date().toLocaleString()}\n`;
-    exportData += '='.repeat(60) + '\n\n';
-    
-    exportData += '📋 TASKS:\n';
-    userTasks.forEach((task, index) => {
-        exportData += `  ${index + 1}. [${task.completed ? 'X' : ' '}] ${task.text}\n`;
-    });
-    
-    exportData += '\n📚 ARTICLES:\n';
-    userArticles.forEach((article, index) => {
-        exportData += `  ${index + 1}. ${article.title}\n`;
-        if (article.authors) exportData += `     Authors: ${article.authors}\n`;
-        if (article.url) exportData += `     URL: ${article.url}\n`;
-        exportData += `     Category: ${getCategoryName(article.category)}\n`;
-    });
-    
-    exportData += '\n📝 REPORT:\n';
-    exportData += userReport;
-    
-    const blob = new Blob([exportData], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `wicked_problems_${user.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    showNotification(`Exported data for ${user.name}!`, 'success');
-}
-
-function resetUserData(userId) {
-    if (confirm('Reset this user\'s data? This will delete their report, tasks, and articles.')) {
-        localStorage.removeItem(`tasks_${userId}`);
-        localStorage.removeItem(`articles_${userId}`);
-        localStorage.removeItem(`report_${userId}`);
-        localStorage.removeItem(`backup_${userId}`);
-        loadAdminView();
-        showNotification('User data reset!', 'success');
-    }
-}
-
-function exportAllUsersData() {
-    const predefinedUsers = JSON.parse(localStorage.getItem('wickedProblemsUsers')) || [];
-    let exportData = 'WICKED PROBLEMS HUB - ALL USERS DATA EXPORT\n';
-    exportData += 'Generated: ' + new Date().toLocaleString() + '\n';
-    exportData += '='.repeat(60) + '\n\n';
-    
-    predefinedUsers.forEach(user => {
-        exportData += `👤 USER: ${user.name} (${user.email})\n`;
-        exportData += '─'.repeat(40) + '\n';
-        
-        const userTasks = JSON.parse(localStorage.getItem(`tasks_${user.id}`)) || [];
-        const userArticles = JSON.parse(localStorage.getItem(`articles_${user.id}`)) || [];
-        const userReport = localStorage.getItem(`report_${user.id}`) || '';
-        
-        exportData += '📋 TASKS:\n';
-        userTasks.forEach((task, index) => {
-            exportData += `  ${index + 1}. [${task.completed ? '✅' : '⬜'}] ${task.text}\n`;
-        });
-        
-        exportData += '\n📚 ARTICLES:\n';
-        userArticles.forEach((article, index) => {
-            exportData += `  ${index + 1}. ${article.title}\n`;
-        });
-        
-        exportData += '\n📝 REPORT SUMMARY:\n';
-        const wordCount = userReport.split(/\s+/).filter(w => w.length > 0).length;
-        exportData += `  Words: ${wordCount}\n`;
-        exportData += `  Characters: ${userReport.length}\n`;
-        exportData += `  Preview: ${userReport.substring(0, 200)}...\n`;
-        
-        exportData += '\n' + '='.repeat(60) + '\n\n';
-    });
-    
-    const blob = new Blob([exportData], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `wicked_problems_all_users_${new Date().toISOString().split('T')[0]}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    showNotification('All users data exported!', 'success');
-}
-
-function backupAllUsersData() {
-    const predefinedUsers = JSON.parse(localStorage.getItem('wickedProblemsUsers')) || [];
-    const backup = {
-        timestamp: new Date().toISOString(),
-        users: predefinedUsers,
-        data: {}
-    };
-    
-    predefinedUsers.forEach(user => {
-        backup.data[user.id] = {
-            tasks: JSON.parse(localStorage.getItem(`tasks_${user.id}`)) || [],
-            articles: JSON.parse(localStorage.getItem(`articles_${user.id}`)) || [],
-            report: localStorage.getItem(`report_${user.id}`) || ''
-        };
-    });
-    
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `wicked_problems_backup_all_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    showNotification('All users data backed up!', 'success');
-}
-
-function resetAllUsersData() {
-    if (!currentUser || !currentUser.isAdmin) return;
-    
-    if (confirm('WARNING: This will reset ALL users data (reports, tasks, articles). Are you sure?')) {
-        const predefinedUsers = JSON.parse(localStorage.getItem('wickedProblemsUsers')) || [];
-        predefinedUsers.forEach(user => {
-            localStorage.removeItem(`tasks_${user.id}`);
-            localStorage.removeItem(`articles_${user.id}`);
-            localStorage.removeItem(`report_${user.id}`);
-            localStorage.removeItem(`backup_${user.id}`);
-        });
-        
-        showNotification('All users data has been reset!', 'success');
-        loadAdminView();
-    }
-}
-
-// ====================
-// DATA EXPORT
-// ====================
-function exportAllData() {
-    const exportObj = {
-        user: currentUser,
-        tasks: userTasks,
-        articles: userArticles,
-        report: userReport,
-        exportedAt: new Date().toISOString(),
-        wordCount: userReport.split(/\s+/).filter(w => w.length > 0).length,
-        taskCompletion: `${userTasks.filter(t => t.completed).length}/${userTasks.length}`,
-        articleCount: userArticles.length
-    };
-    
-    const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `WickedProblems_${currentUser.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    showNotification('All data exported successfully!', 'success');
-}
-
-// ====================
 // UTILITY FUNCTIONS
 // ====================
-function logout() {
+async function logout() {
     // Save all data before logging out
-    saveAllData();
+    await saveAllData();
     
     // Clear only session data, NOT user work
     localStorage.removeItem('currentUser');
     
     // Show confirmation
-    showNotification('All data saved! Redirecting to login...', 'success');
+    showNotification('All data saved to cloud! Redirecting to login...', 'success');
     
     // Redirect after delay
     setTimeout(() => {
@@ -2917,26 +2732,6 @@ function showNotification(message, type = 'success') {
     }, 3000);
 }
 
-// Clear localStorage (with confirmation)
-function clearLocalData() {
-    if (confirm('⚠️ WARNING: This will delete ALL your work in this browser!\n\nThis includes:\n• Your report\n• All tasks\n• All saved articles\n\nAre you absolutely sure? Export your data first!')) {
-        const userId = currentUser.id;
-        localStorage.removeItem(`tasks_${userId}`);
-        localStorage.removeItem(`articles_${userId}`);
-        localStorage.removeItem(`report_${userId}`);
-        localStorage.removeItem(`backup_${userId}`);
-        
-        userTasks = [];
-        userArticles = [];
-        userReport = '';
-        
-        updateTaskDisplay();
-        updateArticlesDisplay();
-        updateReportDisplay();
-        showNotification('All local data cleared!', 'warning');
-    }
-}
-
 // Add CSS animations for notifications
 const style = document.createElement('style');
 style.textContent = `
@@ -2979,7 +2774,6 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
-        
     </script>
 </body>
 </html>

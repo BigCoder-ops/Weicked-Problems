@@ -1,0 +1,2737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wicked Problems Research Hub - Dashboard</title>
+    <style>
+        /* Professional Chemistry Dashboard Styles */
+:root {
+    --primary-dark: #0c1427;
+    --secondary-dark: #1a243f;
+    --tertiary-dark: #2a3657;
+    --accent-blue: #4cc9f0;
+    --accent-light: #9da6c1;
+    --text-light: #e6e9f0;
+    --warning: #ff8a80;
+    --success: #4ae3b5;
+    --purple: #9d4edd;
+    --orange: #ff9e00;
+    --cyan: #00e5ff;
+    
+    --gradient-primary: linear-gradient(135deg, #0c1427 0%, #1a243f 100%);
+    --gradient-accent: linear-gradient(135deg, #4cc9f0 0%, #9d4edd 100%);
+    --gradient-card: linear-gradient(135deg, #1a243f 0%, #2a3657 100%);
+    --gradient-sidebar: linear-gradient(180deg, #0c1427 0%, #1a243f 100%);
+    
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 8px 30px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 15px 50px rgba(0, 0, 0, 0.4);
+    --shadow-glow: 0 0 20px rgba(76, 201, 240, 0.3);
+    
+    --border-radius-sm: 8px;
+    --border-radius-md: 12px;
+    --border-radius-lg: 16px;
+    --border-radius-xl: 24px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+body {
+    background: var(--gradient-primary);
+    color: var(--text-light);
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+.container {
+    display: flex;
+    min-height: 100vh;
+    background: radial-gradient(circle at 20% 50%, rgba(76, 201, 240, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(157, 78, 221, 0.1) 0%, transparent 50%);
+}
+
+/* Sidebar Styles - Professional Redesign */
+.sidebar {
+    width: 280px;
+    background: var(--gradient-sidebar);
+    padding: 30px 0;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+}
+
+.sidebar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-blue), transparent);
+}
+
+.logo {
+    text-align: center;
+    margin-bottom: 40px;
+    padding: 0 25px;
+}
+
+.logo h1 {
+    font-size: 24px;
+    color: var(--text-light);
+    margin-bottom: 8px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    background: var(--gradient-accent);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.logo span {
+    font-size: 13px;
+    color: var(--accent-light);
+    opacity: 0.9;
+    letter-spacing: 0.5px;
+    display: block;
+    line-height: 1.4;
+}
+
+.user-info {
+    background: rgba(76, 201, 240, 0.08);
+    margin: 0 25px 30px;
+    padding: 20px;
+    border-radius: var(--border-radius-md);
+    position: relative;
+    border: 1px solid rgba(76, 201, 240, 0.1);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.user-info:hover {
+    border-color: rgba(76, 201, 240, 0.3);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow);
+}
+
+.user-info h3 {
+    color: var(--text-light);
+    font-size: 17px;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.user-info p {
+    font-size: 13px;
+    color: var(--accent-light);
+    line-height: 1.5;
+}
+
+.user-role {
+    display: inline-block;
+    padding: 4px 12px;
+    background: var(--gradient-accent);
+    color: white;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 8px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.user-role.admin {
+    background: linear-gradient(135deg, var(--orange), #ff6b6b);
+}
+
+.data-status {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: rgba(76, 201, 240, 0.15);
+    border-radius: var(--border-radius-sm);
+    padding: 6px 12px;
+    font-size: 11px;
+    color: var(--accent-blue);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid rgba(76, 201, 240, 0.2);
+}
+
+.nav-menu {
+    list-style: none;
+    flex: 1;
+    padding: 0 25px;
+}
+
+.nav-menu li {
+    margin-bottom: 6px;
+}
+
+.nav-menu a {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    color: var(--accent-light);
+    text-decoration: none;
+    border-radius: var(--border-radius-md);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 15px;
+    font-weight: 500;
+    position: relative;
+    overflow: hidden;
+}
+
+.nav-menu a::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 3px;
+    background: var(--accent-blue);
+    transform: translateX(-10px);
+    transition: transform 0.3s ease;
+    opacity: 0;
+}
+
+.nav-menu a:hover {
+    background: rgba(76, 201, 240, 0.1);
+    color: var(--text-light);
+    transform: translateX(5px);
+    box-shadow: var(--shadow-sm);
+}
+
+.nav-menu a:hover::before {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.nav-menu a.active {
+    background: linear-gradient(90deg, rgba(76, 201, 240, 0.2), rgba(157, 78, 221, 0.1));
+    color: var(--text-light);
+    border-left: 3px solid var(--accent-blue);
+    box-shadow: var(--shadow-sm);
+}
+
+.nav-menu a.active::after {
+    content: '';
+    position: absolute;
+    right: 20px;
+    width: 6px;
+    height: 6px;
+    background: var(--accent-blue);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+.logout-btn {
+    background: linear-gradient(135deg, rgba(255, 138, 128, 0.2), rgba(255, 158, 0, 0.1));
+    color: var(--warning);
+    border: 1px solid rgba(255, 138, 128, 0.3);
+    padding: 15px;
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    font-weight: 600;
+    margin: 25px;
+    text-align: center;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 15px;
+    backdrop-filter: blur(10px);
+}
+
+.logout-btn:hover {
+    background: linear-gradient(135deg, rgba(255, 138, 128, 0.3), rgba(255, 158, 0, 0.2));
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(255, 138, 128, 0.2);
+}
+
+/* Main Content Styles */
+.main-content {
+    flex: 1;
+    padding: 30px 40px;
+    overflow-y: auto;
+    position: relative;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+    padding-bottom: 25px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    position: relative;
+}
+
+.header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 100px;
+    height: 2px;
+    background: var(--accent-blue);
+    border-radius: 2px;
+}
+
+.header h2 {
+    color: var(--text-light);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, var(--text-light), var(--accent-blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.auto-save-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--accent-light);
+    background: rgba(76, 201, 240, 0.1);
+    padding: 10px 16px;
+    border-radius: var(--border-radius-xl);
+    border: 1px solid rgba(76, 201, 240, 0.2);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.auto-save-indicator.saving {
+    color: var(--warning);
+    border-color: rgba(255, 138, 128, 0.3);
+}
+
+.auto-save-indicator.saved {
+    color: var(--success);
+    border-color: rgba(74, 227, 181, 0.3);
+}
+
+.date-display {
+    color: var(--accent-light);
+    font-size: 14px;
+    font-weight: 500;
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: var(--border-radius-md);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Content Area */
+.content-area {
+    display: none;
+    animation: fadeIn 0.4s ease-out;
+}
+
+.content-area.active {
+    display: block;
+}
+
+/* Grid Layout */
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 30px;
+    margin-top: 20px;
+}
+
+.card {
+    background: var(--gradient-card);
+    border-radius: var(--border-radius-lg);
+    padding: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(76, 201, 240, 0.3), transparent);
+}
+
+.card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: var(--shadow-lg), var(--shadow-glow);
+    border-color: rgba(76, 201, 240, 0.2);
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    position: relative;
+}
+
+.card-header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 60px;
+    height: 2px;
+    background: var(--accent-blue);
+    border-radius: 2px;
+}
+
+.card-header h3 {
+    color: var(--text-light);
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.card-header span {
+    font-size: 24px;
+    color: var(--accent-blue);
+    background: rgba(76, 201, 240, 0.1);
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Report Editor */
+.word-count {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, rgba(76, 201, 240, 0.1), rgba(157, 78, 221, 0.05));
+    padding: 18px 25px;
+    border-radius: var(--border-radius-md);
+    flex-wrap: wrap;
+    gap: 15px;
+    border: 1px solid rgba(76, 201, 240, 0.1);
+}
+
+.word-count span {
+    color: var(--accent-blue);
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.word-count-progress {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+    margin-top: 10px;
+    overflow: hidden;
+    position: relative;
+}
+
+.word-count-progress::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.1) 50%, transparent 100%);
+    animation: shimmer 2s infinite;
+}
+
+.word-count-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-blue), var(--cyan));
+    width: 0%;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 3px;
+    position: relative;
+    z-index: 1;
+}
+
+#reportEditor {
+    width: 100%;
+    min-height: 450px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--border-radius-md);
+    padding: 25px;
+    color: var(--text-light);
+    font-size: 15px;
+    line-height: 1.7;
+    resize: vertical;
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+#reportEditor:focus {
+    outline: none;
+    border-color: rgba(76, 201, 240, 0.5);
+    box-shadow: 0 0 0 3px rgba(76, 201, 240, 0.1);
+}
+
+.editor-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+/* Task Manager */
+.task-input {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 25px;
+}
+
+.task-input input {
+    flex: 1;
+    padding: 16px 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--border-radius-md);
+    color: var(--text-light);
+    font-size: 15px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.task-input input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(76, 201, 240, 0.1);
+    transform: translateY(-2px);
+}
+
+.task-list {
+    list-style: none;
+    max-height: 450px;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+.task-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.task-item {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(76, 201, 240, 0.05));
+    padding: 20px;
+    border-radius: var(--border-radius-md);
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 4px solid var(--accent-blue);
+    animation: slideIn 0.4s ease-out;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.task-item:hover {
+    transform: translateX(5px);
+    border-color: rgba(76, 201, 240, 0.3);
+    box-shadow: var(--shadow-sm);
+}
+
+.task-item.completed {
+    opacity: 0.7;
+    border-left-color: var(--success);
+    background: linear-gradient(135deg, rgba(74, 227, 181, 0.05), rgba(255, 255, 255, 0.02));
+}
+
+.task-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.task-actions button {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--accent-light);
+    cursor: pointer;
+    font-size: 15px;
+    padding: 8px 12px;
+    border-radius: var(--border-radius-sm);
+    transition: all 0.3s ease;
+}
+
+.task-actions button:hover {
+    background: rgba(76, 201, 240, 0.2);
+    color: var(--accent-blue);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Literature Repository */
+.category-tabs {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+}
+
+.category-tab {
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: var(--border-radius-xl);
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--accent-light);
+    font-weight: 500;
+}
+
+.category-tab:hover {
+    background: rgba(76, 201, 240, 0.1);
+    color: var(--text-light);
+    transform: translateY(-2px);
+}
+
+.category-tab.active {
+    background: var(--gradient-accent);
+    color: white;
+    border-color: transparent;
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-2px);
+}
+
+.article-form {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.02), rgba(76, 201, 240, 0.05));
+    padding: 25px;
+    border-radius: var(--border-radius-lg);
+    margin-bottom: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.form-row input,
+.form-row select {
+    flex: 1;
+    min-width: 200px;
+    padding: 14px;
+    background: var(--tertiary-dark); /* ← CHANGE TO DARK COLOR */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--border-radius-md);
+    color: var(--text-light);
+    font-size: 14px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.form-row input:focus,
+.form-row select:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(76, 201, 240, 0.1);
+    transform: translateY(-2px);
+}
+
+.articles-list {
+    max-height: 450px;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+.article-item {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.02), rgba(76, 201, 240, 0.05));
+    padding: 20px;
+    border-radius: var(--border-radius-md);
+    margin-bottom: 12px;
+    border-left: 4px solid;
+    animation: slideIn 0.4s ease-out;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
+}
+
+.article-item:hover {
+    transform: translateX(5px);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: var(--shadow-sm);
+}
+
+.article-item.anode {
+    border-left-color: var(--accent-blue);
+    background: linear-gradient(135deg, rgba(76, 201, 240, 0.05), rgba(255, 255, 255, 0.02));
+}
+
+.article-item.cathode {
+    border-left-color: var(--purple);
+    background: linear-gradient(135deg, rgba(157, 78, 221, 0.05), rgba(255, 255, 255, 0.02));
+}
+
+.article-item.geopolitical {
+    border-left-color: var(--warning);
+    background: linear-gradient(135deg, rgba(255, 138, 128, 0.05), rgba(255, 255, 255, 0.02));
+}
+
+.article-item.recycling {
+    border-left-color: var(--success);
+    background: linear-gradient(135deg, rgba(74, 227, 181, 0.05), rgba(255, 255, 255, 0.02));
+}
+
+.article-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-light);
+    font-size: 16px;
+    line-height: 1.4;
+}
+
+.article-meta {
+    font-size: 13px;
+    color: var(--accent-light);
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+
+/* Chemistry Toolkit */
+.toolkit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 25px;
+}
+
+.tool-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.02), rgba(76, 201, 240, 0.05));
+    padding: 30px 25px;
+    border-radius: var(--border-radius-lg);
+    text-decoration: none;
+    color: var(--text-light);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    display: block;
+    position: relative;
+    overflow: hidden;
+}
+
+.tool-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(76, 201, 240, 0.3), transparent);
+}
+
+.tool-card:hover {
+    border-color: rgba(76, 201, 240, 0.3);
+    transform: translateY(-8px) scale(1.03);
+    box-shadow: var(--shadow-lg), var(--shadow-glow);
+}
+
+.tool-icon {
+    font-size: 42px;
+    margin-bottom: 20px;
+    background: rgba(76, 201, 240, 0.1);
+    width: 70px;
+    height: 70px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.tool-card h4 {
+    color: var(--accent-blue);
+    margin-bottom: 12px;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.tool-card p {
+    font-size: 14px;
+    color: var(--accent-light);
+    line-height: 1.6;
+    text-align: center;
+}
+
+/* Admin Panel */
+.admin-users-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 25px;
+}
+
+.admin-user-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.02), rgba(157, 78, 221, 0.05));
+    padding: 25px;
+    border-radius: var(--border-radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
+}
+
+.admin-user-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(157, 78, 221, 0.3);
+    box-shadow: var(--shadow-md);
+}
+
+/* Button Styles */
+.btn {
+    background: linear-gradient(135deg, var(--accent-blue), var(--cyan));
+    color: white;
+    border: none;
+    padding: 14px 28px;
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 15px;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(76, 201, 240, 0.3);
+}
+
+.btn:hover::before {
+    left: 100%;
+}
+
+.btn-secondary {
+    background: transparent;
+    color: var(--accent-light);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: var(--text-light);
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, var(--warning), #ff5252);
+    color: white;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, var(--success), #00bfa5);
+    color: white;
+}
+
+.btn-small {
+    padding: 10px 20px;
+    font-size: 14px;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, var(--accent-blue), var(--purple));
+    border-radius: 5px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, var(--cyan), var(--accent-blue));
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+    from { transform: translateX(-20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes pulse {
+    0% { transform: scale(0.95); opacity: 0.7; }
+    50% { transform: scale(1.05); opacity: 1; }
+    100% { transform: scale(0.95); opacity: 0.7; }
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+@keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(20px); opacity: 0; }
+}
+
+.pulse {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+/* Data Backup Section */
+.backup-section {
+    background: linear-gradient(135deg, rgba(76, 201, 240, 0.1), rgba(157, 78, 221, 0.05));
+    padding: 30px;
+    border-radius: var(--border-radius-lg);
+    margin-top: 25px;
+    border: 1px solid rgba(76, 201, 240, 0.1);
+}
+
+.backup-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+/* Instructions Styling */
+.instructions {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.02), rgba(157, 78, 221, 0.05));
+    padding: 25px;
+    border-radius: var(--border-radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    margin-top: 25px;
+}
+
+.instructions h4 {
+    color: var(--accent-blue);
+    margin-bottom: 15px;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.instructions ul {
+    padding-left: 20px;
+    margin: 15px 0;
+}
+
+.instructions li {
+    color: var(--accent-light);
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+.instructions p {
+    color: var(--accent-light);
+    line-height: 1.6;
+    margin: 10px 0;
+}
+
+.instructions strong {
+    color: var(--text-light);
+    font-weight: 600;
+}
+
+/* Project Stats */
+.project-stats p {
+    color: var(--accent-light);
+    margin-bottom: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.project-stats strong {
+    color: var(--text-light);
+    font-weight: 600;
+    min-width: 100px;
+    display: inline-block;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .grid-container {
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    }
+    
+    .toolkit-grid {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+}
+
+@media (max-width: 992px) {
+    .container {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        padding: 20px;
+    }
+    
+    .nav-menu {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .nav-menu li {
+        flex: 1;
+        min-width: 150px;
+    }
+    
+    .main-content {
+        padding: 25px;
+    }
+}
+
+@media (max-width: 768px) {
+    .grid-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-row input,
+    .form-row select {
+        min-width: 100%;
+    }
+    
+    .header {
+        flex-direction: column;
+        gap: 20px;
+        text-align: center;
+    }
+    
+    .header-controls {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .backup-options {
+        grid-template-columns: 1fr;
+    }
+    
+    .editor-buttons {
+        flex-direction: column;
+    }
+    
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .nav-menu {
+        flex-direction: column;
+    }
+    
+    .nav-menu li {
+        min-width: 100%;
+    }
+    
+    .main-content {
+        padding: 20px 15px;
+    }
+    
+    .card {
+        padding: 25px 20px;
+    }
+    
+    .word-count {
+        padding: 15px 20px;
+    }
+
+    
+}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <h1>⚗️ Wicked Problems</h1>
+                <span>Critical Raw Materials & Batteries</span>
+                <span>Chemistry 101 Project</span>
+            </div>
+
+            <div class="user-info" id="userInfoDisplay">
+                <!-- User info will be populated by JavaScript -->
+                <div class="data-status" id="dataStatus">
+                    <span class="pulse" id="autoSaveIndicator">●</span>
+                    <span id="lastSaved">Just now</span>
+                </div>
+            </div>
+
+            <ul class="nav-menu">
+                <li><a href="#dashboard" class="active" onclick="showSection('dashboard')">
+                    📊 Dashboard
+                </a></li>
+                <li><a href="#report" onclick="showSection('report')">
+                    📝 Report Editor
+                </a></li>
+                <li><a href="#tasks" onclick="showSection('tasks')">
+                    ✅ Task Manager
+                </a></li>
+                <li><a href="#literature" onclick="showSection('literature')">
+                    📚 Literature Repository
+                </a></li>
+                <li><a href="#chemistry" onclick="showSection('chemistry')">
+                    🔬 Chemistry Toolkit
+                </a></li>
+                <li><a href="#references" onclick="showSection('references')">
+                    📑 ACS Reference Generator
+                </a></li>
+                <li><a href="#backup" onclick="showSection('backup')">
+                    💾 Data Backup
+                </a></li>
+                <li><a href="#admin" class="admin-only" onclick="showSection('admin')">
+                    👑 Admin Panel
+                </a></li>
+            </ul>
+
+            <div class="logout-btn" onclick="logout()">
+                <span>🚪</span>
+                <span>Logout & Save</span>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <div class="header">
+                <h2 id="sectionTitle">Dashboard</h2>
+                <div class="header-controls">
+                    <div class="auto-save-indicator" id="saveIndicator">
+                        <span>💾</span>
+                        <span id="saveStatus">Auto-save enabled</span>
+                    </div>
+                    <div class="date-display" id="currentDate"></div>
+                </div>
+            </div>
+
+            <!-- Dashboard Section -->
+            <div id="dashboard" class="content-area active">
+                <div class="grid-container">
+                    <div class="card">
+                        <div class="card-header">
+                            <span>📊</span>
+                            <h3>Project Overview</h3>
+                        </div>
+                        <div class="project-stats">
+                            <p><strong>Topic:</strong> Critical Raw Materials for Battery Technology</p>
+                            <p><strong>Due Date:</strong> January 23, 2026</p>
+                            <p><strong>Report Length:</strong> 10 pages (approx. 3000 words)</p>
+                            <p><strong>Submission:</strong> johan.jacquemin@um6p.ma</p>
+                            <p><strong>Your Role:</strong> <span id="userRoleDisplay"></span></p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span>✅</span>
+                            <h3>Task Progress</h3>
+                        </div>
+                        <div id="taskProgress">
+                            <!-- Progress will be populated by JS -->
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span>📝</span>
+                            <h3>Report Status</h3>
+                        </div>
+                        <div id="reportStatus">
+                            <!-- Report status will be populated by JS -->
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span>📚</span>
+                            <h3>Literature Collection</h3>
+                        </div>
+                        <div id="literatureStats">
+                            <!-- Literature stats will be populated by JS -->
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span>⚠️</span>
+                            <h3>Peer Evaluation Reminder</h3>
+                        </div>
+                        <div id="peerEvalReminder">
+                            <!-- Peer eval reminder will be populated by JS -->
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span>💾</span>
+                            <h3>Quick Actions</h3>
+                        </div>
+                        <div class="editor-buttons">
+                            <button class="btn btn-small" onclick="saveAllData()">
+                                💾 Save All Now
+                            </button>
+                            <button class="btn btn-secondary btn-small" onclick="exportAllData()">
+                                📥 Export All Data
+                            </button>
+                            <button class="btn btn-success btn-small" onclick="createBackup()">
+                                🛡️ Create Backup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Report Editor Section -->
+            <div id="report" class="content-area">
+                <div class="card">
+                    <div class="card-header">
+                        <span>📝</span>
+                        <h3>Scientific Report Editor</h3>
+                    </div>
+                    
+                    <div class="word-count">
+                        <div>Word Count: <span id="wordCount">0</span> words</div>
+                        <div>Page Count: <span id="pageCount">0</span> / 10 pages</div>
+                        <div>Target: 3000 words (approx. 10 pages)</div>
+                        <div class="word-count-progress">
+                            <div class="word-count-progress-bar" id="wordProgressBar"></div>
+                        </div>
+                    </div>
+
+                    <textarea id="reportEditor" placeholder="Start writing your 10-page scientific report here...
+
+Suggested Structure:
+1. Introduction to Critical Raw Materials
+2. Battery Chemistry Fundamentals
+3. Material Supply Chain Analysis
+4. Environmental Impact Assessment
+5. Future Alternatives and Research
+6. Conclusion and Recommendations
+
+Remember to use ACS citation style for references."></textarea>
+
+                    <div class="editor-buttons">
+                        <button class="btn" onclick="saveReport()">
+                            💾 Save Report Now
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportReportPDF()">
+                            📄 Download as Text
+                        </button>
+                        <button class="btn btn-secondary" onclick="copyReportToClipboard()">
+                            📋 Copy to Clipboard
+                        </button>
+                        <button class="btn btn-warning" onclick="clearReport()">
+                            🗑️ Clear Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Task Manager Section -->
+            <div id="tasks" class="content-area">
+                <div class="card">
+                    <div class="card-header">
+                        <span>✅</span>
+                        <h3>Wicked Problems Task Manager</h3>
+                    </div>
+
+                    <div class="task-input">
+                        <input type="text" id="newTaskInput" placeholder="Add a new task..." onkeypress="if(event.key === 'Enter') addTask()">
+                        <button class="btn" onclick="addTask()">
+                            ➕ Add Task
+                        </button>
+                    </div>
+
+                    <div class="word-count" style="margin: 20px 0;">
+                        <div>Total Tasks: <span id="totalTasks">0</span></div>
+                        <div>Completed: <span id="completedTasks">0</span></div>
+                        <div>Pending: <span id="pendingTasks">0</span></div>
+                    </div>
+
+                    <ul class="task-list" id="taskList">
+                        <!-- Tasks will be populated here -->
+                    </ul>
+
+                    <div class="editor-buttons" style="margin-top: 20px;">
+                        <button class="btn" onclick="saveTasks()">
+                            💾 Save Tasks
+                        </button>
+                        <button class="btn btn-secondary" onclick="resetToDefaultTasks()">
+                            🔄 Reset to Default Tasks
+                        </button>
+                        <button class="btn btn-warning" onclick="clearAllTasks()">
+                            🗑️ Clear All Tasks
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Literature Repository Section -->
+            <div id="literature" class="content-area">
+                <div class="card">
+                    <div class="card-header">
+                        <span>📚</span>
+                        <h3>Literature Repository</h3>
+                    </div>
+
+                    <div class="category-tabs">
+                        <div class="category-tab active" onclick="filterArticles('all')">All Articles</div>
+                        <div class="category-tab" onclick="filterArticles('anode')">Anode Chemistry</div>
+                        <div class="category-tab" onclick="filterArticles('cathode')">Cathode Materials</div>
+                        <div class="category-tab" onclick="filterArticles('geopolitical')">Geopolitical Constraints</div>
+                        <div class="category-tab" onclick="filterArticles('recycling')">Recycling Processes</div>
+                    </div>
+
+                    <div class="article-form">
+                        <div class="form-row">
+                            <input type="text" id="articleTitle" placeholder="Article Title" onkeypress="if(event.key === 'Enter') addArticle()">
+                            <input type="text" id="articleUrl" placeholder="DOI or URL (optional)">
+                        </div>
+                        <div class="form-row">
+                            <select id="articleCategory">
+                                <option value="anode">Anode Chemistry</option>
+                                <option value="cathode">Cathode Materials</option>
+                                <option value="geopolitical">Geopolitical Constraints</option>
+                                <option value="recycling">Recycling Processes</option>
+                                <option value="other">Other</option>
+                            </select>
+                            <input type="text" id="articleAuthors" placeholder="Authors (optional)">
+                            <button class="btn" onclick="addArticle()">
+                                📥 Add Article
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="articles-list" id="articlesList">
+                        <!-- Articles will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chemistry Toolkit Section -->
+            <div id="chemistry" class="content-area">
+                <div class="card">
+                    <div class="card-header">
+                        <span>🔬</span>
+                        <h3>Chemistry Toolkit</h3>
+                    </div>
+
+                    <div class="toolkit-grid">
+                        <a href="https://avogadro.cc/" target="_blank" class="tool-card">
+                            <div class="tool-icon">⚛️</div>
+                            <h4>Avogadro</h4>
+                            <p>Advanced molecular editor and visualizer for computational chemistry</p>
+                        </a>
+
+                        <a href="http://jmol.sourceforge.net/" target="_blank" class="tool-card">
+                            <div class="tool-icon">🧪</div>
+                            <h4>Jmol</h4>
+                            <p>Java-based viewer for chemical structures in 3D with spectroscopy data</p>
+                        </a>
+
+                        <a href="https://webbook.nist.gov/chemistry/" target="_blank" class="tool-card">
+                            <div class="tool-icon">📊</div>
+                            <h4>NIST Chemistry WebBook</h4>
+                            <p>Thermochemical, thermophysical, and ion energetics data</p>
+                        </a>
+
+                        <a href="https://www.rsc.org/publishing/journals/" target="_blank" class="tool-card">
+                            <div class="tool-icon">📚</div>
+                            <h4>RSC Journals</h4>
+                            <p>Royal Society of Chemistry publications on materials science</p>
+                        </a>
+
+                        <a href="https://pubs.acs.org/" target="_blank" class="ool-card">
+                            <div class="tool-icon">🔍</div>
+                            <h4>ACS Publications</h4>
+                            <p>American Chemical Society journals and articles</p>
+                        </a>
+
+                        <a href="https://www.sciencedirect.com/" target="_blank" class="tool-card">
+                            <div class="tool-icon">🔬</div>
+                            <h4>ScienceDirect</h4>
+                            <p>Elsevier's database of scientific and medical research</p>
+                        </a>
+
+                        <a href="https://www.ccdc.cam.ac.uk/" target="_blank" class="tool-card">
+                            <div class="tool-icon">💎</div>
+                            <h4>Cambridge Crystallographic</h4>
+                            <p>Crystal structure database for materials characterization</p>
+                        </a>
+
+                        <a href="https://materialsproject.org/" target="_blank" class="tool-card">
+                            <div class="tool-icon">⚡</div>
+                            <h4>Materials Project</h4>
+                            <p>Database of computed materials properties for battery research</p>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ACS Reference Generator -->
+            <div id="references" class="content-area">
+                <div class="card">
+                    <div class="card-header">
+                        <span>📑</span>
+                        <h3>ACS Reference Generator</h3>
+                    </div>
+
+                    <div class="article-form">
+                        <div class="form-row">
+                            <input type="text" id="refAuthors" placeholder="Authors (e.g., Smith, J. R.; Johnson, A. B.)">
+                            <input type="text" id="refYear" placeholder="Year (e.g., 2024)">
+                        </div>
+                        <div class="form-row">
+                            <input type="text" id="refTitle" placeholder="Article Title">
+                            <input type="text" id="refJournal" placeholder="Journal Name">
+                        </div>
+                        <div class="form-row">
+                            <input type="text" id="refVolume" placeholder="Volume">
+                            <input type="text" id="refIssue" placeholder="Issue (optional)">
+                            <input type="text" id="refPages" placeholder="Pages (e.g., 1234-1245)">
+                            <input type="text" id="refDOI" placeholder="DOI (optional)">
+                        </div>
+                        <button class="btn" onclick="generateACSReference()">
+                            🧪 Generate ACS Reference
+                        </button>
+                    </div>
+
+                    <div class="word-count" style="margin: 20px 0;">
+                        <h4>Generated Reference:</h4>
+                        <textarea id="generatedReference" style="width: 100%; height: 100px; margin-top: 10px;" readonly></textarea>
+                        <button class="btn btn-secondary" onclick="copyReference()" style="margin-top: 10px;">
+                            📋 Copy Reference
+                        </button>
+                    </div>
+
+                    <div class="instructions" style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px;">
+                        <h4>📋 ACS Style Guidelines:</h4>
+                        <ul>
+                            <li>Authors: Last Name, First Initial.; Last Name, First Initial.</li>
+                            <li>Article Title in Sentence Case</li>
+                            <li>Journal Name in Italics (Abbreviated)</li>
+                            <li>Year, Volume(Issue), Pages</li>
+                            <li>DOI if available</li>
+                        </ul>
+                        <p><strong>Example:</strong> Smith, J. R.; Johnson, A. B. Advances in Lithium-Ion Battery Technology. <em>J. Electrochem. Soc.</em> 2024, <em>171</em>(3), 1234-1245. DOI: 10.1149/123456</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Backup Section -->
+            <div id="backup" class="content-area">
+                <div class="card">
+                    <div class="card-header">
+                        <span>💾</span>
+                        <h3>Data Backup & Recovery</h3>
+                    </div>
+
+                    <div class="backup-section">
+                        <h4 style="color: var(--accent-blue); margin-bottom: 15px;">🛡️ Your Data Protection Center</h4>
+                        <p style="color: var(--accent-light); margin-bottom: 20px; font-size: 14px;">
+                            Your work is saved in your browser's localStorage. Use these tools to backup and protect your data.
+                        </p>
+
+                        <div class="backup-options">
+                            <button class="btn" onclick="exportAllData()">
+                                📥 Export All Data
+                            </button>
+                            <button class="btn btn-secondary" onclick="createBackup()">
+                                🛡️ Create Backup
+                            </button>
+                            <button class="btn btn-secondary" onclick="restoreFromBackup()">
+                                🔄 Restore Backup
+                            </button>
+                            <button class="btn btn-warning" onclick="showStorageInfo()">
+                                ℹ️ Storage Info
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 30px;">
+                        <h4 style="color: var(--accent-blue); margin-bottom: 15px;">📊 Data Statistics</h4>
+                        <div id="dataStats" style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px;">
+                            <!-- Data stats will be populated here -->
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 30px;">
+                        <h4 style="color: var(--warning); margin-bottom: 15px;">⚠️ Critical Warnings</h4>
+                        <div style="background: rgba(255,107,107,0.1); padding: 15px; border-radius: 8px; font-size: 13px;">
+                            <p><strong>Data is stored ONLY in this browser on this computer.</strong></p>
+                            <ul style="margin-top: 10px; padding-left: 20px;">
+                                <li>Clearing browser history/cache will DELETE your work</li>
+                                <li>Using a different browser or computer = different storage</li>
+                                <li>Private/incognito mode doesn't save data</li>
+                                <li>Browser updates sometimes clear data</li>
+                            </ul>
+                            <p style="margin-top: 10px; color: var(--accent-blue);">
+                                <strong>Solution:</strong> Export your data regularly!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Panel -->
+            <div id="admin" class="content-area">
+                <div class="card">
+                    <div class="card-header">
+                        <span>👑</span>
+                        <h3>Admin Panel - User Management</h3>
+                    </div>
+
+                    <div class="admin-users-grid" id="adminUsersGrid">
+                        <!-- Admin view of users will be populated here -->
+                    </div>
+
+                    <div class="editor-buttons" style="margin-top: 20px;">
+                        <button class="btn" onclick="exportAllUsersData()">
+                            📊 Export All Users Data
+                        </button>
+                        <button class="btn btn-secondary" onclick="backupAllUsersData()">
+                            🛡️ Backup All Users
+                        </button>
+                        <button class="btn btn-warning" onclick="resetAllUsersData()">
+                            🔄 Reset All Users Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ====================
+        // GLOBAL VARIABLES
+        // ====================
+        let currentUser = null;
+        let userTasks = [];
+        let userArticles = [];
+        let userReport = "";
+        let autoSaveInterval;
+        let lastSaveTime = new Date();
+        let isSaving = false;
+
+        // ====================
+        // INITIALIZATION
+        // ====================
+        window.onload = function() {
+            // Check if user is logged in
+            const storedUser = localStorage.getItem('currentUser');
+            if (!storedUser) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            currentUser = JSON.parse(storedUser);
+            loadUserData();
+            updateUI();
+            setupAutoSave();
+            updateLastSavedTime();
+            checkPeerEvaluationReminder();
+            
+            // Set current date
+            document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
+            // Set default tasks if none exist
+            if (userTasks.length === 0) {
+                resetToDefaultTasks();
+            }
+
+            // Setup auto-save indicator
+            setupSaveIndicator();
+
+            // Setup beforeunload warning
+            window.addEventListener('beforeunload', function (e) {
+                // Only warn if there's unsaved changes
+                if (hasUnsavedChanges()) {
+                    e.preventDefault();
+                    e.returnValue = 'You have unsaved changes! Are you sure you want to leave?';
+                    return e.returnValue;
+                }
+            });
+        };
+
+        // ====================
+        // AUTO-SAVE SYSTEM
+        // ====================
+        function setupAutoSave() {
+            // Auto-save every 30 seconds
+            autoSaveInterval = setInterval(() => {
+                if (!isSaving) {
+                    saveAllData();
+                }
+            }, 30000);
+
+            // Auto-save when report changes
+            document.getElementById('reportEditor').addEventListener('input', function() {
+                updateWordCount();
+                // Mark as needing save
+                userReport = this.value;
+            });
+
+            // Auto-save when tasks change
+            document.getElementById('taskList').addEventListener('change', function() {
+                scheduleSave();
+            });
+        }
+
+        function setupSaveIndicator() {
+            setInterval(() => {
+                const now = new Date();
+                const diff = Math.floor((now - lastSaveTime) / 1000);
+                
+                if (diff < 30) {
+                    document.getElementById('saveStatus').textContent = 'Saved just now';
+                    document.getElementById('saveIndicator').className = 'auto-save-indicator saved';
+                } else if (diff < 60) {
+                    document.getElementById('saveStatus').textContent = 'Saved ' + diff + 's ago';
+                    document.getElementById('saveIndicator').className = 'auto-save-indicator';
+                } else {
+                    document.getElementById('saveStatus').textContent = 'Saving soon...';
+                    document.getElementById('saveIndicator').className = 'auto-save-indicator';
+                }
+
+                // Update data status indicator
+                const indicator = document.getElementById('autoSaveIndicator');
+                if (isSaving) {
+                    indicator.className = 'pulse';
+                    indicator.style.color = 'var(--warning)';
+                } else if (diff < 10) {
+                    indicator.className = '';
+                    indicator.style.color = 'var(--success)';
+                } else {
+                    indicator.className = '';
+                    indicator.style.color = 'var(--accent-blue)';
+                }
+            }, 1000);
+        }
+
+        function scheduleSave() {
+            if (!isSaving) {
+                isSaving = true;
+                setTimeout(() => {
+                    saveAllData();
+                    isSaving = false;
+                }, 1000);
+            }
+        }
+
+        function updateLastSavedTime() {
+            lastSaveTime = new Date();
+            const timeStr = lastSaveTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            document.getElementById('lastSaved').textContent = timeStr;
+        }
+
+        function hasUnsavedChanges() {
+            // Check if report editor has unsaved changes
+            const editorContent = document.getElementById('reportEditor').value;
+            return editorContent !== userReport;
+        }
+
+        // ====================
+        // DATA MANAGEMENT
+        // ====================
+        function loadUserData() {
+            const userId = currentUser.id;
+            
+            // Load tasks
+            const storedTasks = localStorage.getItem(`tasks_${userId}`);
+            userTasks = storedTasks ? JSON.parse(storedTasks) : [];
+            
+            // Load articles
+            const storedArticles = localStorage.getItem(`articles_${userId}`);
+            userArticles = storedArticles ? JSON.parse(storedArticles) : [];
+            
+            // Load report
+            const storedReport = localStorage.getItem(`report_${userId}`);
+            userReport = storedReport || "";
+            
+            // Check for backup
+            const backup = localStorage.getItem(`backup_${userId}`);
+            if (backup && !storedReport && !storedTasks && !storedArticles) {
+                if (confirm('Found a backup of your data. Restore it?')) {
+                    restoreFromBackup();
+                    return;
+                }
+            }
+            
+            updateTaskDisplay();
+            updateArticlesDisplay();
+            updateReportDisplay();
+            updateDataStats();
+        }
+
+        function saveAllData() {
+            const userId = currentUser.id;
+            
+            // Save current report from editor
+            userReport = document.getElementById('reportEditor').value;
+            
+            // Save to localStorage
+            localStorage.setItem(`tasks_${userId}`, JSON.stringify(userTasks));
+            localStorage.setItem(`articles_${userId}`, JSON.stringify(userArticles));
+            localStorage.setItem(`report_${userId}`, userReport);
+            
+            // Create backup
+            createBackup();
+            
+            // Update UI
+            updateLastSavedTime();
+            showNotification('All data saved successfully!', 'success');
+            updateDashboardStats();
+        }
+
+        function saveUserData() {
+            saveAllData();
+        }
+
+        // ====================
+        // BACKUP & RECOVERY
+        // ====================
+        function createBackup() {
+            const userId = currentUser.id;
+            const backupData = {
+                tasks: userTasks,
+                articles: userArticles,
+                report: userReport,
+                timestamp: new Date().toISOString(),
+                browserId: localStorage.getItem('browserId') || 'unknown'
+            };
+            
+            localStorage.setItem(`backup_${userId}`, JSON.stringify(backupData));
+            
+            // Keep only last 5 backups
+            let backupCount = 0;
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith(`backup_${userId}_`)) {
+                    backupCount++;
+                    if (backupCount > 5) {
+                        localStorage.removeItem(key);
+                    }
+                }
+            }
+            
+            console.log('Backup created at:', backupData.timestamp);
+        }
+
+        function restoreFromBackup() {
+            const userId = currentUser.id;
+            const backup = localStorage.getItem(`backup_${userId}`);
+            
+            if (!backup) {
+                showNotification('No backup found to restore!', 'warning');
+                return;
+            }
+            
+            if (confirm('Restore from backup? This will replace your current data.')) {
+                try {
+                    const backupData = JSON.parse(backup);
+                    userTasks = backupData.tasks || [];
+                    userArticles = backupData.articles || [];
+                    userReport = backupData.report || '';
+                    
+                    saveAllData();
+                    updateTaskDisplay();
+                    updateArticlesDisplay();
+                    updateReportDisplay();
+                    showNotification('Data restored from backup!', 'success');
+                } catch (e) {
+                    showNotification('Error restoring backup: ' + e.message, 'warning');
+                }
+            }
+        }
+
+        function updateDataStats() {
+            const statsDiv = document.getElementById('dataStats');
+            if (!statsDiv) return;
+            
+            const reportSize = new Blob([userReport]).size;
+            const tasksSize = new Blob([JSON.stringify(userTasks)]).size;
+            const articlesSize = new Blob([JSON.stringify(userArticles)]).size;
+            const totalSize = (reportSize + tasksSize + articlesSize) / 1024; // KB
+            
+            const backup = localStorage.getItem(`backup_${currentUser.id}`);
+            const hasBackup = backup ? '✅' : '❌';
+            
+            statsDiv.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                    <div>
+                        <div style="color: var(--accent-light); font-size: 12px;">Report Size</div>
+                        <div style="color: var(--accent-blue);">${(reportSize / 1024).toFixed(2)} KB</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--accent-light); font-size: 12px;">Tasks</div>
+                        <div style="color: var(--accent-blue);">${userTasks.length}</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--accent-light); font-size: 12px;">Articles</div>
+                        <div style="color: var(--accent-blue);">${userArticles.length}</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--accent-light); font-size: 12px;">Backup</div>
+                        <div style="color: var(--accent-blue);">${hasBackup}</div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <div style="color: var(--accent-light); font-size: 12px;">Total Storage Used</div>
+                    <div style="color: var(--accent-blue); font-size: 18px; font-weight: bold;">${totalSize.toFixed(2)} KB</div>
+                    <div style="font-size: 11px; color: var(--accent-light);">
+                        ${((totalSize / (5 * 1024)) * 100).toFixed(1)}% of 5MB limit
+                    </div>
+                </div>
+            `;
+        }
+
+        function showStorageInfo() {
+            let totalSize = 0;
+            let itemCount = 0;
+            
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                const value = localStorage.getItem(key);
+                totalSize += (key.length + value.length) * 2; // Approximate size in bytes
+                itemCount++;
+            }
+            
+            const info = `
+💾 BROWSER STORAGE INFORMATION:
+
+Total items: ${itemCount}
+Total size: ${(totalSize / 1024).toFixed(2)} KB
+Storage limit: ~5 MB
+Usage: ${((totalSize / (5 * 1024 * 1024)) * 100).toFixed(1)}%
+
+📁 YOUR DATA:
+- Report: ${(new Blob([userReport]).size / 1024).toFixed(2)} KB
+- Tasks: ${userTasks.length} items
+- Articles: ${userArticles.length} items
+
+⚠️ REMEMBER:
+- Data is browser-specific
+- Export regularly for safety
+- Use same browser always
+            `;
+            
+            alert(info);
+        }
+
+        // ====================
+        // UI UPDATES
+        // ====================
+        function updateUI() {
+            // Update user info
+            document.getElementById('userInfoDisplay').innerHTML = `
+                <h3>${currentUser.name}</h3>
+                <p>${currentUser.email}</p>
+                <span class="user-role ${currentUser.role}">${currentUser.role.toUpperCase()}</span>
+                <div class="data-status">
+                    <span class="pulse" id="autoSaveIndicator">●</span>
+                    <span id="lastSaved">Just now</span>
+                </div>
+            `;
+
+            // Show user role
+            document.getElementById('userRoleDisplay').textContent = currentUser.role === 'admin' ? 'Admin (can view all data)' : 'Researcher (private workspace)';
+
+            // Show/hide admin menu item
+            const adminMenuItems = document.querySelectorAll('.admin-only');
+            adminMenuItems.forEach(item => {
+                item.style.display = currentUser.isAdmin ? 'flex' : 'none';
+            });
+
+            // Update dashboard stats
+            updateDashboardStats();
+            updateDataStats();
+        }
+
+        function updateDashboardStats() {
+            // Task progress
+            const completed = userTasks.filter(t => t.completed).length;
+            const total = userTasks.length;
+            const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+            
+            document.getElementById('taskProgress').innerHTML = `
+                <div style="margin: 10px 0;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span>Progress</span>
+                        <span>${progress}%</span>
+                    </div>
+                    <div style="background: var(--tertiary-dark); height: 10px; border-radius: 5px; overflow: hidden;">
+                        <div style="background: var(--accent-blue); width: ${progress}%; height: 100%; transition: width 0.5s;"></div>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 12px; color: var(--accent-light);">
+                        ${completed} of ${total} tasks completed
+                    </div>
+                </div>
+            `;
+
+            // Report status
+            const wordCount = userReport.split(/\s+/).filter(word => word.length > 0).length;
+            const pageCount = Math.ceil(wordCount / 300);
+            const progressPercent = Math.min(100, (wordCount / 3000) * 100);
+            
+            document.getElementById('reportStatus').innerHTML = `
+                <div style="margin: 10px 0;">
+                    <div style="font-size: 24px; color: var(--accent-blue); font-weight: bold;">
+                        ${wordCount} words
+                    </div>
+                    <div style="font-size: 14px; color: var(--accent-light);">
+                        Approximately ${pageCount} of 10 pages
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <div style="background: var(--tertiary-dark); height: 8px; border-radius: 4px; overflow: hidden;">
+                            <div style="background: var(--accent-blue); width: ${progressPercent}%; height: 100%;"></div>
+                        </div>
+                        <div style="font-size: 12px; margin-top: 5px;">
+                            ${wordCount >= 3000 ? '✅ Target reached!' : `Need ${3000 - wordCount} more words`}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Literature stats
+            const categories = {};
+            userArticles.forEach(article => {
+                categories[article.category] = (categories[article.category] || 0) + 1;
+            });
+            
+            let categoriesText = '';
+            for (const [cat, count] of Object.entries(categories)) {
+                categoriesText += `${cat}: ${count}<br>`;
+            }
+            
+            document.getElementById('literatureStats').innerHTML = `
+                <div style="margin: 10px 0;">
+                    <div style="font-size: 24px; color: var(--accent-blue); font-weight: bold;">
+                        ${userArticles.length} articles
+                    </div>
+                    <div style="font-size: 12px; color: var(--accent-light); margin-top: 5px;">
+                        ${categoriesText || 'No articles categorized yet'}
+                    </div>
+                </div>
+            `;
+
+            // Peer evaluation reminder
+            const deadline = new Date('2026-01-23');
+            const today = new Date();
+            const daysUntilDeadline = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
+            
+            let reminderText = '';
+            let reminderColor = 'var(--accent-blue)';
+            
+            if (daysUntilDeadline <= 0) {
+                reminderText = '⚠️ Peer evaluations are overdue!';
+                reminderColor = 'var(--warning)';
+            } else if (daysUntilDeadline <= 7) {
+                reminderText = `⚠️ Peer evaluations due in ${daysUntilDeadline} days!`;
+                reminderColor = 'var(--warning)';
+            } else if (daysUntilDeadline <= 14) {
+                reminderText = `ℹ️ Peer evaluations due in ${daysUntilDeadline} days`;
+                reminderColor = 'var(--accent-blue)';
+            } else {
+                reminderText = `✅ Peer evaluations due in ${daysUntilDeadline} days`;
+                reminderColor = 'var(--success)';
+            }
+            
+            document.getElementById('peerEvalReminder').innerHTML = `
+                <div style="margin: 10px 0;">
+                    <div style="color: ${reminderColor}; font-weight: bold;">
+                        ${reminderText}
+                    </div>
+                    <div style="font-size: 12px; color: var(--accent-light); margin-top: 5px;">
+                        Due: January 23, 2026
+                    </div>
+                    <div style="margin-top: 15px; font-size: 11px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px;">
+                        <strong>Task Support & Involvement:</strong>
+                        <br>• Help teammates with their sections
+                        <br>• Participate in group discussions
+                        <br>• Provide constructive feedback
+                    </div>
+                </div>
+            `;
+        }
+
+        // ====================
+        // SECTION NAVIGATION
+        // ====================
+        function showSection(sectionId) {
+            // Save current data before switching sections
+            if (hasUnsavedChanges()) {
+                saveReport();
+            }
+            
+            // Hide all sections
+            document.querySelectorAll('.content-area').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Remove active class from all nav items
+            document.querySelectorAll('.nav-menu a').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            // Show selected section
+            document.getElementById(sectionId).classList.add('active');
+            
+            // Update active nav item
+            document.querySelector(`.nav-menu a[href="#${sectionId}"]`).classList.add('active');
+            
+            // Update section title
+            const titles = {
+                'dashboard': 'Dashboard',
+                'report': 'Report Editor',
+                'tasks': 'Task Manager',
+                'literature': 'Literature Repository',
+                'chemistry': 'Chemistry Toolkit',
+                'references': 'ACS Reference Generator',
+                'backup': 'Data Backup',
+                'admin': 'Admin Panel'
+            };
+            
+            document.getElementById('sectionTitle').textContent = titles[sectionId];
+            
+            // Special handling for admin section
+            if (sectionId === 'admin' && currentUser.isAdmin) {
+                loadAdminView();
+            }
+        }
+
+        // ====================
+        // REPORT EDITOR FUNCTIONS
+        // ====================
+        function updateReportDisplay() {
+            const editor = document.getElementById('reportEditor');
+            editor.value = userReport;
+            updateWordCount();
+        }
+
+        function updateWordCount() {
+            const text = document.getElementById('reportEditor').value;
+            const wordCount = text.split(/\s+/).filter(word => word.length > 0).length;
+            const pageCount = Math.ceil(wordCount / 300);
+            const progressPercent = Math.min(100, (wordCount / 3000) * 100);
+            
+            document.getElementById('wordCount').textContent = wordCount;
+            document.getElementById('pageCount').textContent = pageCount;
+            document.getElementById('wordProgressBar').style.width = `${progressPercent}%`;
+            
+            // Update progress bar color based on completion
+            const progressBar = document.getElementById('wordProgressBar');
+            if (progressPercent >= 100) {
+                progressBar.style.background = 'var(--success)';
+            } else if (progressPercent >= 70) {
+                progressBar.style.background = 'var(--accent-blue)';
+            } else {
+                progressBar.style.background = 'var(--warning)';
+            }
+        }
+
+        function saveReport() {
+            userReport = document.getElementById('reportEditor').value;
+            saveAllData();
+        }
+
+        function exportReportPDF() {
+            const text = document.getElementById('reportEditor').value;
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `WickedProblems_Report_${currentUser.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showNotification('Report exported as text file!', 'success');
+        }
+
+        function copyReportToClipboard() {
+            const text = document.getElementById('reportEditor').value;
+            navigator.clipboard.writeText(text).then(() => {
+                showNotification('Report copied to clipboard!', 'success');
+            });
+        }
+
+        function clearReport() {
+            if (confirm('Are you sure you want to clear the entire report? This cannot be undone.')) {
+                document.getElementById('reportEditor').value = '';
+                userReport = '';
+                saveReport();
+                updateWordCount();
+            }
+        }
+
+        // ====================
+        // TASK MANAGER FUNCTIONS
+        // ====================
+        function updateTaskDisplay() {
+            const taskList = document.getElementById('taskList');
+            const completed = userTasks.filter(t => t.completed).length;
+            const total = userTasks.length;
+            const pending = total - completed;
+            
+            document.getElementById('totalTasks').textContent = total;
+            document.getElementById('completedTasks').textContent = completed;
+            document.getElementById('pendingTasks').textContent = pending;
+            
+            taskList.innerHTML = userTasks.map((task, index) => `
+                <li class="task-item ${task.completed ? 'completed' : ''}">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" ${task.completed ? 'checked' : ''} 
+                               onchange="toggleTask(${index})" style="cursor: pointer;">
+                        <span>${task.text}</span>
+                    </div>
+                    <div class="task-actions">
+                        <button onclick="editTask(${index})" title="Edit">✏️</button>
+                        <button onclick="deleteTask(${index})" title="Delete">🗑️</button>
+                    </div>
+                </li>
+            `).join('');
+            
+            updateDashboardStats();
+        }
+
+        function addTask() {
+            const input = document.getElementById('newTaskInput');
+            const text = input.value.trim();
+            
+            if (text) {
+                userTasks.push({
+                    text: text,
+                    completed: false,
+                    createdAt: new Date().toISOString()
+                });
+                
+                input.value = '';
+                saveTasks();
+                updateTaskDisplay();
+                showNotification('Task added!', 'success');
+            }
+        }
+
+        function toggleTask(index) {
+            userTasks[index].completed = !userTasks[index].completed;
+            saveTasks();
+            updateTaskDisplay();
+        }
+
+        function editTask(index) {
+            const newText = prompt('Edit task:', userTasks[index].text);
+            if (newText !== null && newText.trim()) {
+                userTasks[index].text = newText.trim();
+                saveTasks();
+                updateTaskDisplay();
+            }
+        }
+
+        function deleteTask(index) {
+            if (confirm('Delete this task?')) {
+                userTasks.splice(index, 1);
+                saveTasks();
+                updateTaskDisplay();
+            }
+        }
+
+        function saveTasks() {
+            scheduleSave();
+        }
+
+        function resetToDefaultTasks() {
+            const defaultTasks = [
+                { text: "Literature Review: Critical Raw Materials", completed: false },
+                { text: "Chemical Analysis: Battery Components", completed: false },
+                { text: "ACS Referencing and Citations", completed: false },
+                { text: "Supply Chain Mapping", completed: false },
+                { text: "Environmental Impact Assessment", completed: false },
+                { text: "Future Alternatives Research", completed: false },
+                { text: "Draft Introduction Section", completed: false },
+                { text: "Complete Methodology Section", completed: false },
+                { text: "Write Results Analysis", completed: false },
+                { text: "Peer Evaluation Forms", completed: false },
+                { text: "Final Report Compilation", completed: false },
+                { text: "Proofread and Format", completed: false }
+            ];
+            
+            userTasks = defaultTasks;
+            saveTasks();
+            updateTaskDisplay();
+            showNotification('Reset to default tasks!', 'success');
+        }
+
+        function clearAllTasks() {
+            if (confirm('Clear all tasks? This cannot be undone.')) {
+                userTasks = [];
+                saveTasks();
+                updateTaskDisplay();
+            }
+        }
+
+        // ====================
+        // LITERATURE REPOSITORY
+        // ====================
+        function updateArticlesDisplay(filter = 'all') {
+            const articlesList = document.getElementById('articlesList');
+            let filteredArticles = userArticles;
+            
+            if (filter !== 'all') {
+                filteredArticles = userArticles.filter(article => article.category === filter);
+            }
+            
+            articlesList.innerHTML = filteredArticles.map((article, index) => `
+                <div class="article-item ${article.category}">
+                    <div class="article-title">${article.title}</div>
+                    <div class="article-meta">
+                        ${article.authors ? `Authors: ${article.authors} | ` : ''}
+                        Category: ${getCategoryName(article.category)}
+                        ${article.addedAt ? ` | Added: ${new Date(article.addedAt).toLocaleDateString()}` : ''}
+                    </div>
+                    ${article.url ? `<div style="margin-top: 5px;">
+                        <a href="${article.url}" target="_blank" style="color: var(--accent-blue); font-size: 12px;">
+                            🔗 ${article.url}
+                        </a>
+                    </div>` : ''}
+                    <div class="task-actions" style="margin-top: 10px;">
+                        <button onclick="editArticle(${index})" title="Edit">✏️</button>
+                        <button onclick="deleteArticle(${index})" title="Delete">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getCategoryName(category) {
+            const categories = {
+                'anode': 'Anode Chemistry',
+                'cathode': 'Cathode Materials',
+                'geopolitical': 'Geopolitical Constraints',
+                'recycling': 'Recycling Processes',
+                'other': 'Other'
+            };
+            return categories[category] || category;
+        }
+
+        function filterArticles(category) {
+            // Update active tab
+            document.querySelectorAll('.category-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            updateArticlesDisplay(category);
+        }
+
+        function addArticle() {
+            const title = document.getElementById('articleTitle').value.trim();
+            const url = document.getElementById('articleUrl').value.trim();
+            const category = document.getElementById('articleCategory').value;
+            const authors = document.getElementById('articleAuthors').value.trim();
+            
+            if (!title) {
+                showNotification('Please enter article title!', 'warning');
+                return;
+            }
+            
+            userArticles.push({
+                title: title,
+                url: url || null,
+                category: category,
+                authors: authors || null,
+                addedAt: new Date().toISOString()
+            });
+            
+            // Clear form
+            document.getElementById('articleTitle').value = '';
+            document.getElementById('articleUrl').value = '';
+            document.getElementById('articleAuthors').value = '';
+            
+            saveArticles();
+            updateArticlesDisplay();
+            updateDashboardStats();
+            showNotification('Article added to repository!', 'success');
+        }
+
+        function editArticle(index) {
+            const article = userArticles[index];
+            const newTitle = prompt('Edit article title:', article.title);
+            if (newTitle !== null && newTitle.trim()) {
+                userArticles[index].title = newTitle.trim();
+                const newUrl = prompt('Edit URL (or leave empty):', article.url || '');
+                userArticles[index].url = newUrl.trim() || null;
+                const newAuthors = prompt('Edit authors:', article.authors || '');
+                userArticles[index].authors = newAuthors.trim() || null;
+                saveArticles();
+                updateArticlesDisplay();
+            }
+        }
+
+        function deleteArticle(index) {
+            if (confirm('Delete this article from repository?')) {
+                userArticles.splice(index, 1);
+                saveArticles();
+                updateArticlesDisplay();
+            }
+        }
+
+        function saveArticles() {
+            scheduleSave();
+        }
+
+        // ====================
+        // ACS REFERENCE GENERATOR
+        // ====================
+        function generateACSReference() {
+            const authors = document.getElementById('refAuthors').value.trim();
+            const year = document.getElementById('refYear').value.trim();
+            const title = document.getElementById('refTitle').value.trim();
+            const journal = document.getElementById('refJournal').value.trim();
+            const volume = document.getElementById('refVolume').value.trim();
+            const issue = document.getElementById('refIssue').value.trim();
+            const pages = document.getElementById('refPages').value.trim();
+            const doi = document.getElementById('refDOI').value.trim();
+            
+            if (!authors || !year || !title || !journal || !volume || !pages) {
+                showNotification('Please fill in all required fields!', 'warning');
+                return;
+            }
+            
+            let reference = `${authors} ${title}. `;
+            reference += `<em>${journal}</em> `;
+            reference += `${year}, `;
+            reference += `<em>${volume}</em>`;
+            if (issue) reference += `(${issue})`;
+            reference += `, ${pages}.`;
+            if (doi) reference += ` DOI: ${doi}`;
+            
+            document.getElementById('generatedReference').value = reference;
+        }
+
+        function copyReference() {
+            const reference = document.getElementById('generatedReference').value;
+            if (!reference) {
+                showNotification('No reference to copy!', 'warning');
+                return;
+            }
+            
+            navigator.clipboard.writeText(reference).then(() => {
+                showNotification('Reference copied to clipboard!', 'success');
+            });
+        }
+
+        // ====================
+        // ADMIN FUNCTIONS
+        // ====================
+        function loadAdminView() {
+            if (!currentUser.isAdmin) return;
+            
+            const predefinedUsers = JSON.parse(localStorage.getItem('wickedProblemsUsers')) || [];
+            const adminGrid = document.getElementById('adminUsersGrid');
+            
+            adminGrid.innerHTML = predefinedUsers.map(user => {
+                // Load user data
+                const userTasks = JSON.parse(localStorage.getItem(`tasks_${user.id}`)) || [];
+                const userArticles = JSON.parse(localStorage.getItem(`articles_${user.id}`)) || [];
+                const userReport = localStorage.getItem(`report_${user.id}`) || '';
+                const wordCount = userReport.split(/\s+/).filter(w => w.length > 0).length;
+                const completedTasks = userTasks.filter(t => t.completed).length;
+                const hasBackup = localStorage.getItem(`backup_${user.id}`) ? '✅' : '❌';
+                
+                return `
+                    <div class="admin-user-card">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div>
+                                <h4>${user.name}</h4>
+                                <p style="font-size: 12px; color: var(--accent-light);">${user.email}</p>
+                                <span class="user-role ${user.role}" style="margin-top: 5px;">${user.role.toUpperCase()}</span>
+                            </div>
+                            <button class="btn btn-secondary btn-small" onclick="viewUserData(${user.id})">
+                                View Data
+                            </button>
+                        </div>
+                        
+                        <div style="margin-top: 15px; font-size: 12px;">
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                                <div>
+                                    <div style="color: var(--accent-light);">Report</div>
+                                    <div style="color: var(--accent-blue);">${wordCount} words</div>
+                                </div>
+                                <div>
+                                    <div style="color: var(--accent-light);">Tasks</div>
+                                    <div style="color: var(--accent-blue);">${completedTasks}/${userTasks.length}</div>
+                                </div>
+                                <div>
+                                    <div style="color: var(--accent-light);">Articles</div>
+                                    <div style="color: var(--accent-blue);">${userArticles.length}</div>
+                                </div>
+                                <div>
+                                    <div style="color: var(--accent-light);">Backup</div>
+                                    <div style="color: var(--accent-blue);">${hasBackup}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 15px; display: flex; gap: 10px;">
+                            <button class="btn btn-secondary btn-small" onclick="exportUserData(${user.id})">
+                                Export
+                            </button>
+                            <button class="btn btn-warning btn-small" onclick="resetUserData(${user.id})">
+                                Reset
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function viewUserData(userId) {
+            const userTasks = JSON.parse(localStorage.getItem(`tasks_${userId}`)) || [];
+            const userArticles = JSON.parse(localStorage.getItem(`articles_${userId}`)) || [];
+            const userReport = localStorage.getItem(`report_${userId}`) || '';
+            
+            let message = `👤 USER DATA REPORT\n\n`;
+            message += `Tasks (${userTasks.length}):\n`;
+            userTasks.forEach((task, index) => {
+                message += `  ${index + 1}. [${task.completed ? '✅' : '⬜'}] ${task.text}\n`;
+            });
+            
+            message += `\nArticles (${userArticles.length}):\n`;
+            userArticles.forEach((article, index) => {
+                message += `  ${index + 1}. ${article.title}\n`;
+            });
+            
+            message += `\nReport Summary:\n`;
+            const wordCount = userReport.split(/\s+/).filter(w => w.length > 0).length;
+            message += `  ${wordCount} words (${Math.ceil(wordCount/300)} pages)\n`;
+            message += `  ${userReport.length} characters\n`;
+            message += `  ${wordCount >= 3000 ? '✅ Target reached' : `❌ Needs ${3000 - wordCount} more words`}\n`;
+            
+            alert(message);
+        }
+
+        function exportUserData(userId) {
+            const predefinedUsers = JSON.parse(localStorage.getItem('wickedProblemsUsers')) || [];
+            const user = predefinedUsers.find(u => u.id === userId);
+            if (!user) return;
+            
+            const userTasks = JSON.parse(localStorage.getItem(`tasks_${userId}`)) || [];
+            const userArticles = JSON.parse(localStorage.getItem(`articles_${userId}`)) || [];
+            const userReport = localStorage.getItem(`report_${userId}`) || '';
+            
+            let exportData = `WICKED PROBLEMS HUB - USER DATA EXPORT\n`;
+            exportData += `User: ${user.name} (${user.email})\n`;
+            exportData += `Role: ${user.role}\n`;
+            exportData += `Exported: ${new Date().toLocaleString()}\n`;
+            exportData += '='.repeat(60) + '\n\n';
+            
+            exportData += '📋 TASKS:\n';
+            userTasks.forEach((task, index) => {
+                exportData += `  ${index + 1}. [${task.completed ? 'X' : ' '}] ${task.text}\n`;
+            });
+            
+            exportData += '\n📚 ARTICLES:\n';
+            userArticles.forEach((article, index) => {
+                exportData += `  ${index + 1}. ${article.title}\n`;
+                if (article.authors) exportData += `     Authors: ${article.authors}\n`;
+                if (article.url) exportData += `     URL: ${article.url}\n`;
+                exportData += `     Category: ${getCategoryName(article.category)}\n`;
+            });
+            
+            exportData += '\n📝 REPORT:\n';
+            exportData += userReport;
+            
+            const blob = new Blob([exportData], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `wicked_problems_${user.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showNotification(`Exported data for ${user.name}!`, 'success');
+        }
+
+        function resetUserData(userId) {
+            if (confirm('Reset this user\'s data? This will delete their report, tasks, and articles.')) {
+                localStorage.removeItem(`tasks_${userId}`);
+                localStorage.removeItem(`articles_${userId}`);
+                localStorage.removeItem(`report_${userId}`);
+                localStorage.removeItem(`backup_${userId}`);
+                loadAdminView();
+                showNotification('User data reset!', 'success');
+            }
+        }
+
+        function exportAllUsersData() {
+            const predefinedUsers = JSON.parse(localStorage.getItem('wickedProblemsUsers')) || [];
+            let exportData = 'WICKED PROBLEMS HUB - ALL USERS DATA EXPORT\n';
+            exportData += 'Generated: ' + new Date().toLocaleString() + '\n';
+            exportData += '='.repeat(60) + '\n\n';
+            
+            predefinedUsers.forEach(user => {
+                exportData += `👤 USER: ${user.name} (${user.email})\n`;
+                exportData += '─'.repeat(40) + '\n';
+                
+                const userTasks = JSON.parse(localStorage.getItem(`tasks_${user.id}`)) || [];
+                const userArticles = JSON.parse(localStorage.getItem(`articles_${user.id}`)) || [];
+                const userReport = localStorage.getItem(`report_${user.id}`) || '';
+                
+                exportData += '📋 TASKS:\n';
+                userTasks.forEach((task, index) => {
+                    exportData += `  ${index + 1}. [${task.completed ? '✅' : '⬜'}] ${task.text}\n`;
+                });
+                
+                exportData += '\n📚 ARTICLES:\n';
+                userArticles.forEach((article, index) => {
+                    exportData += `  ${index + 1}. ${article.title}\n`;
+                });
+                
+                exportData += '\n📝 REPORT SUMMARY:\n';
+                const wordCount = userReport.split(/\s+/).filter(w => w.length > 0).length;
+                exportData += `  Words: ${wordCount}\n`;
+                exportData += `  Characters: ${userReport.length}\n`;
+                exportData += `  Preview: ${userReport.substring(0, 200)}...\n`;
+                
+                exportData += '\n' + '='.repeat(60) + '\n\n';
+            });
+            
+            const blob = new Blob([exportData], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `wicked_problems_all_users_${new Date().toISOString().split('T')[0]}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showNotification('All users data exported!', 'success');
+        }
+
+        function backupAllUsersData() {
+            const predefinedUsers = JSON.parse(localStorage.getItem('wickedProblemsUsers')) || [];
+            const backup = {
+                timestamp: new Date().toISOString(),
+                users: predefinedUsers,
+                data: {}
+            };
+            
+            predefinedUsers.forEach(user => {
+                backup.data[user.id] = {
+                    tasks: JSON.parse(localStorage.getItem(`tasks_${user.id}`)) || [],
+                    articles: JSON.parse(localStorage.getItem(`articles_${user.id}`)) || [],
+                    report: localStorage.getItem(`report_${user.id}`) || ''
+                };
+            });
+            
+            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `wicked_problems_backup_all_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showNotification('All users data backed up!', 'success');
+        }
+
+        function resetAllUsersData() {
+            if (!currentUser.isAdmin) return;
+            
+            if (confirm('WARNING: This will reset ALL users data (reports, tasks, articles). Are you sure?')) {
+                const predefinedUsers = JSON.parse(localStorage.getItem('wickedProblemsUsers')) || [];
+                predefinedUsers.forEach(user => {
+                    localStorage.removeItem(`tasks_${user.id}`);
+                    localStorage.removeItem(`articles_${user.id}`);
+                    localStorage.removeItem(`report_${user.id}`);
+                    localStorage.removeItem(`backup_${user.id}`);
+                });
+                
+                showNotification('All users data has been reset!', 'success');
+                loadAdminView();
+            }
+        }
+
+        // ====================
+        // DATA EXPORT
+        // ====================
+        function exportAllData() {
+            const exportObj = {
+                user: currentUser,
+                tasks: userTasks,
+                articles: userArticles,
+                report: userReport,
+                exportedAt: new Date().toISOString(),
+                wordCount: userReport.split(/\s+/).filter(w => w.length > 0).length,
+                taskCompletion: `${userTasks.filter(t => t.completed).length}/${userTasks.length}`,
+                articleCount: userArticles.length
+            };
+            
+            const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `WickedProblems_${currentUser.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showNotification('All data exported successfully!', 'success');
+        }
+
+        // ====================
+        // UTILITY FUNCTIONS
+        // ====================
+        function logout() {
+            // Save all data before logging out
+            saveAllData();
+            
+            // Clear only session data, NOT user work
+            localStorage.removeItem('currentUser');
+            
+            // Show confirmation
+            showNotification('All data saved! Redirecting to login...', 'success');
+            
+            // Redirect after delay
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 1500);
+        }
+
+        function checkPeerEvaluationReminder() {
+            const deadline = new Date('2026-01-23');
+            const today = new Date();
+            const daysUntilDeadline = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
+            
+            if (daysUntilDeadline <= 7 && daysUntilDeadline > 0) {
+                setTimeout(() => {
+                    if (confirm(`⚠️ PEER EVALUATION REMINDER\n\nPeer evaluations are due in ${daysUntilDeadline} days (January 23, 2026).\n\nRemember to evaluate your teammates based on:\n• Task Support\n• Involvement\n• Quality of Work`)) {
+                        showSection('dashboard');
+                    }
+                }, 2000);
+            }
+        }
+
+        function showNotification(message, type = 'success') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? 'var(--success)' : type === 'warning' ? 'var(--warning)' : 'var(--accent-blue)'};
+                color: ${type === 'success' || type === 'warning' ? 'white' : 'var(--primary-dark)'};
+                padding: 15px 20px;
+                border-radius: 8px;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+                z-index: 1000;
+                animation: slideIn 0.3s ease;
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            `;
+            
+            notification.innerHTML = `
+                <span>${type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️'}</span>
+                <span>${message}</span>
+            `;
+            document.body.appendChild(notification);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 3000);
+        }
+
+        // Clear localStorage (with confirmation)
+        function clearLocalData() {
+            if (confirm('⚠️ WARNING: This will delete ALL your work in this browser!\n\nThis includes:\n• Your report\n• All tasks\n• All saved articles\n\nAre you absolutely sure? Export your data first!')) {
+                const userId = currentUser.id;
+                localStorage.removeItem(`tasks_${userId}`);
+                localStorage.removeItem(`articles_${userId}`);
+                localStorage.removeItem(`report_${userId}`);
+                localStorage.removeItem(`backup_${userId}`);
+                
+                userTasks = [];
+                userArticles = [];
+                userReport = '';
+                
+                updateTaskDisplay();
+                updateArticlesDisplay();
+                updateReportDisplay();
+                showNotification('All local data cleared!', 'warning');
+            }
+        }
+    </script>
+</body>
+</html>

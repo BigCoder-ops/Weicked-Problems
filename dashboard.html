@@ -1559,13 +1559,14 @@ Remember to use ACS citation style for references."></textarea>
     </div>
 
     <script>
-       // ====================
+      // ====================
 // SUPABASE CONFIGURATION
 // ====================
-const SUPABASE_URL = 'https://ofjcprgonnpihjavxacw.supabase.co'; // Replace with your actual URL
-const SUPABASE_ANON_KEY = 'sb_publishable_5r4L-8B7H6bUEeAyZzUcpQ_kEo6BEUg'; // Replace with your actual key
+// Go to Supabase → Settings → API → Copy "Project URL" and "anon/public key"
+const SUPABASE_URL = 'https://ofjcprgonnpihjavxacw.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mamNwcmdvbm5waWhqYXZ4YWN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU1MzgwNDgsImV4cCI6MjA4MTExNDA0OH0.k35WBZXErVOybFny35YtLj7p-YMmi_a5L6hcuFj4Ki4';
 
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ====================
 // GLOBAL VARIABLES
@@ -1582,57 +1583,81 @@ let isSaving = false;
 // INITIALIZATION
 // ====================
 window.onload = async function() {
+    console.log('Dashboard loading...');
+    
     // Check if user is logged in
     const storedUser = localStorage.getItem('currentUser');
     if (!storedUser) {
+        console.log('No user found, redirecting to login...');
         window.location.href = 'index.html';
         return;
     }
 
     try {
         currentUser = JSON.parse(storedUser);
+        console.log('Current user:', currentUser);
     } catch (e) {
         console.error('Error parsing user data:', e);
         window.location.href = 'index.html';
         return;
     }
 
-    // Initialize all components
-    await loadUserData();
-    updateUI();
-    setupAutoSave();
-    updateLastSavedTime();
-    checkPeerEvaluationReminder();
-    
-    // Set current date
-    const currentDateElement = document.getElementById('currentDate');
-    if (currentDateElement) {
-        currentDateElement.textContent = new Date().toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-    }
-
-    // Set default tasks if none exist
-    if (userTasks.length === 0) {
-        resetToDefaultTasks();
-    }
-
-    // Setup auto-save indicator
-    setupSaveIndicator();
-
-    // Setup beforeunload warning
-    window.addEventListener('beforeunload', function (e) {
-        if (hasUnsavedChanges()) {
-            e.preventDefault();
-            e.returnValue = 'You have unsaved changes! Are you sure you want to leave?';
+    try {
+        // Initialize all components
+        await loadUserData();
+        updateUI();
+        setupAutoSave();
+        updateLastSavedTime();
+        checkPeerEvaluationReminder();
+        
+        // Set current date
+        const currentDateElement = document.getElementById('currentDate');
+        if (currentDateElement) {
+            currentDateElement.textContent = new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
         }
-    });
 
-    // Initialize dashboard as active section
-    showSection('dashboard');
+        // Set default tasks if none exist
+        if (userTasks.length === 0) {
+            await resetToDefaultTasks();
+        }
+
+        // Setup auto-save indicator
+        setupSaveIndicator();
+
+        // Setup beforeunload warning
+        window.addEventListener('beforeunload', function (e) {
+            if (hasUnsavedChanges()) {
+                e.preventDefault();
+                e.returnValue = 'You have unsaved changes! Are you sure you want to leave?';
+            }
+        });
+
+        // Initialize dashboard as active section
+        showSection('dashboard');
+        
+        // Add event listener for Enter key in task input
+        document.getElementById('newTaskInput')?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addTask();
+            }
+        });
+        
+        // Add event listener for Enter key in article title
+        document.getElementById('articleTitle')?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addArticle();
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error during initialization:', error);
+        showNotification('Error loading dashboard: ' + error.message, 'warning');
+    }
 };
 
 // ====================
@@ -1645,6 +1670,7 @@ async function loadUserData() {
     }
     
     const userId = currentUser.id;
+    console.log('Loading data for user:', userId);
     
     try {
         // Load tasks from Supabase
@@ -1653,6 +1679,8 @@ async function loadUserData() {
             .select('*')
             .eq('user_id', userId)
             .order('created_at', { ascending: true });
+        
+        console.log('Tasks loaded:', tasksData);
         
         if (!tasksError) {
             userTasks = tasksData.map(task => ({
@@ -1672,6 +1700,8 @@ async function loadUserData() {
             .select('*')
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
+        
+        console.log('Articles loaded:', articlesData);
         
         if (!articlesError) {
             userArticles = articlesData.map(article => ({
@@ -1693,6 +1723,8 @@ async function loadUserData() {
             .select('*')
             .eq('user_id', userId)
             .single();
+        
+        console.log('Report loaded:', reportData);
         
         if (!reportError && reportData) {
             userReport = reportData.content || "";
@@ -1798,13 +1830,13 @@ async function saveAllData() {
         }
         
         // Save report to Supabase
-        const { data: existingReport, error: reportCheckError } = await supabase
+        const { data: existingReport } = await supabase
             .from('user_reports')
             .select('id')
             .eq('user_id', userId)
             .single();
         
-        if (existingReport) {
+        if (existingReport && existingReport.id) {
             // Update existing report
             await supabase
                 .from('user_reports')
@@ -1893,14 +1925,6 @@ function setupAutoSave() {
             scheduleSave();
         });
     }
-
-    // Auto-save when tasks change
-    const taskList = document.getElementById('taskList');
-    if (taskList) {
-        taskList.addEventListener('change', function() {
-            scheduleSave();
-        });
-    }
 }
 
 function setupSaveIndicator() {
@@ -1921,13 +1945,19 @@ function setupSaveIndicator() {
         if (saveStatus) {
             if (diff < 30) {
                 saveStatus.textContent = 'Saved to cloud';
-                if (saveIndicator) saveIndicator.className = 'auto-save-indicator saved';
+                if (saveIndicator) {
+                    saveIndicator.className = 'auto-save-indicator saved';
+                }
             } else if (diff < 60) {
                 saveStatus.textContent = 'Saved ' + diff + 's ago';
-                if (saveIndicator) saveIndicator.className = 'auto-save-indicator';
+                if (saveIndicator) {
+                    saveIndicator.className = 'auto-save-indicator';
+                }
             } else {
                 saveStatus.textContent = 'Saving soon...';
-                if (saveIndicator) saveIndicator.className = 'auto-save-indicator';
+                if (saveIndicator) {
+                    saveIndicator.className = 'auto-save-indicator';
+                }
             }
         }
 
@@ -2031,6 +2061,8 @@ async function addTask() {
         await saveAllData();
         updateTaskDisplay();
         showNotification('Task added and saved to cloud!', 'success');
+    } else {
+        showNotification('Please enter a task!', 'warning');
     }
 }
 
@@ -2164,10 +2196,7 @@ function filterArticles(category) {
         tab.classList.remove('active');
     });
     
-    if (event && event.target) {
-        event.target.classList.add('active');
-    }
-    
+    event.target.classList.add('active');
     updateArticlesDisplay(category);
 }
 
@@ -2289,8 +2318,105 @@ async function saveReport() {
     }
 }
 
+function exportReportPDF() {
+    const text = userReport;
+    if (!text || text.trim() === '') {
+        showNotification('No report content to export!', 'warning');
+        return;
+    }
+    
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `WickedProblems_Report_${currentUser.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showNotification('Report exported as text file!', 'success');
+}
+
+function copyReportToClipboard() {
+    const text = userReport;
+    if (!text || text.trim() === '') {
+        showNotification('No report content to copy!', 'warning');
+        return;
+    }
+    
+    navigator.clipboard.writeText(text).then(() => {
+        showNotification('Report copied to clipboard!', 'success');
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+        showNotification('Failed to copy to clipboard', 'warning');
+    });
+}
+
+function clearReport() {
+    if (confirm('Are you sure you want to clear the entire report? This cannot be undone.')) {
+        const editor = document.getElementById('reportEditor');
+        if (editor) {
+            editor.value = '';
+        }
+        userReport = '';
+        saveReport();
+        updateWordCount();
+    }
+}
+
 // ====================
-// ADMIN FUNCTIONS WITH SUPABASE
+// ACS REFERENCE GENERATOR
+// ====================
+function generateACSReference() {
+    const authors = document.getElementById('refAuthors')?.value.trim() || '';
+    const year = document.getElementById('refYear')?.value.trim() || '';
+    const title = document.getElementById('refTitle')?.value.trim() || '';
+    const journal = document.getElementById('refJournal')?.value.trim() || '';
+    const volume = document.getElementById('refVolume')?.value.trim() || '';
+    const issue = document.getElementById('refIssue')?.value.trim() || '';
+    const pages = document.getElementById('refPages')?.value.trim() || '';
+    const doi = document.getElementById('refDOI')?.value.trim() || '';
+    
+    if (!authors || !year || !title || !journal || !volume || !pages) {
+        showNotification('Please fill in all required fields!', 'warning');
+        return;
+    }
+    
+    let reference = `${authors} ${title}. `;
+    reference += `<em>${journal}</em> `;
+    reference += `${year}, `;
+    reference += `<em>${volume}</em>`;
+    if (issue) reference += `(${issue})`;
+    reference += `, ${pages}.`;
+    if (doi) reference += ` DOI: ${doi}`;
+    
+    const generatedRefElement = document.getElementById('generatedReference');
+    if (generatedRefElement) {
+        generatedRefElement.value = reference;
+    }
+}
+
+function copyReference() {
+    const generatedRefElement = document.getElementById('generatedReference');
+    if (!generatedRefElement) return;
+    
+    const reference = generatedRefElement.value;
+    if (!reference) {
+        showNotification('No reference to copy!', 'warning');
+        return;
+    }
+    
+    navigator.clipboard.writeText(reference).then(() => {
+        showNotification('Reference copied to clipboard!', 'success');
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+        showNotification('Failed to copy to clipboard', 'warning');
+    });
+}
+
+// ====================
+// ADMIN FUNCTIONS
 // ====================
 async function loadAdminView() {
     if (!currentUser || !currentUser.isAdmin) return;
@@ -2301,46 +2427,37 @@ async function loadAdminView() {
     try {
         adminGrid.innerHTML = '<div class="loading">Loading user data from cloud...</div>';
         
-        // Load all users from Supabase
-        const { data: users, error: usersError } = await supabase
-            .from('users')
-            .select('*');
+        // Load all users from localStorage (since you're using local auth)
+        const predefinedUsers = JSON.parse(localStorage.getItem('wickedProblemsUsers')) || [];
         
-        if (usersError) throw usersError;
-        
-        if (!users || users.length === 0) {
-            adminGrid.innerHTML = '<div class="no-data">No users found in Supabase</div>';
+        if (predefinedUsers.length === 0) {
+            adminGrid.innerHTML = '<div class="no-data">No users registered yet</div>';
             return;
         }
         
-        // Load data for each user
-        const adminHTML = await Promise.all(users.map(async (user) => {
-            // Load user's tasks
+        const adminHTML = await Promise.all(predefinedUsers.map(async (user) => {
+            // Load user's data from Supabase
             const { data: tasksData } = await supabase
                 .from('user_tasks')
                 .select('*')
                 .eq('user_id', user.id);
             
-            const userTasks = tasksData || [];
-            const completedTasks = userTasks.filter(t => t.completed).length;
-            
-            // Load user's articles
             const { data: articlesData } = await supabase
                 .from('user_articles')
                 .select('*')
                 .eq('user_id', user.id);
             
-            const userArticles = articlesData || [];
-            
-            // Load user's report
             const { data: reportData } = await supabase
                 .from('user_reports')
                 .select('content')
                 .eq('user_id', user.id)
                 .single();
             
+            const userTasks = tasksData || [];
+            const userArticles = articlesData || [];
             const userReport = reportData?.content || '';
             const wordCount = userReport.split(/\s+/).filter(w => w.length > 0).length;
+            const completedTasks = userTasks.filter(t => t.completed).length;
             
             return `
                 <div class="admin-user-card">
@@ -2398,23 +2515,21 @@ async function loadAdminView() {
 
 async function viewUserData(userId) {
     try {
-        // Load user's tasks
+        // Load user's data from Supabase
         const { data: tasksData } = await supabase
             .from('user_tasks')
             .select('*')
             .eq('user_id', userId);
         
-        // Load user's articles
         const { data: articlesData } = await supabase
             .from('user_articles')
             .select('*')
             .eq('user_id', userId);
         
-        // Load user's report
         const { data: reportData } = await supabase
             .from('user_reports')
             .select('content')
-            .eq('user_id', userId)
+            .eq('_user_id', userId)
             .single();
         
         const userTasks = tasksData || [];
@@ -2447,9 +2562,11 @@ async function viewUserData(userId) {
 }
 
 // ====================
-// OTHER FUNCTIONS (keep the same but remove localStorage references)
+// SECTION NAVIGATION
 // ====================
 function showSection(sectionId) {
+    console.log('Switching to section:', sectionId);
+    
     // Save current data before switching sections
     if (hasUnsavedChanges()) {
         saveReport();
@@ -2500,6 +2617,9 @@ function showSection(sectionId) {
     }
 }
 
+// ====================
+// UI UPDATES
+// ====================
 function updateUI() {
     if (!currentUser) return;
     
@@ -2654,6 +2774,141 @@ function updateDashboardStats() {
     }
 }
 
+function updateDataStats() {
+    const statsDiv = document.getElementById('dataStats');
+    if (!statsDiv) return;
+    
+    const reportSize = new Blob([userReport]).size;
+    const tasksSize = new Blob([JSON.stringify(userTasks)]).size;
+    const articlesSize = new Blob([JSON.stringify(userArticles)]).size;
+    const totalSize = (reportSize + tasksSize + articlesSize) / 1024; // KB
+    
+    statsDiv.innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+            <div>
+                <div style="color: var(--accent-light); font-size: 12px;">Report Size</div>
+                <div style="color: var(--accent-blue);">${(reportSize / 1024).toFixed(2)} KB</div>
+            </div>
+            <div>
+                <div style="color: var(--accent-light); font-size: 12px;">Tasks</div>
+                <div style="color: var(--accent-blue);">${userTasks.length}</div>
+            </div>
+            <div>
+                <div style="color: var(--accent-light); font-size: 12px;">Articles</div>
+                <div style="color: var(--accent-blue);">${userArticles.length}</div>
+            </div>
+            <div>
+                <div style="color: var(--accent-light); font-size: 12px;">Cloud Storage</div>
+                <div style="color: var(--accent-blue);">✅ Active</div>
+            </div>
+        </div>
+        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <div style="color: var(--accent-light); font-size: 12px;">Total Storage Used</div>
+            <div style="color: var(--accent-blue); font-size: 18px; font-weight: bold;">${totalSize.toFixed(2)} KB</div>
+            <div style="font-size: 11px; color: var(--accent-light);">
+                Data synced with Supabase Cloud
+            </div>
+        </div>
+    `;
+}
+
+// ====================
+// BACKUP FUNCTIONS (Simple version)
+// ====================
+function createBackup() {
+    if (!currentUser || !currentUser.id) return;
+    
+    const backupData = {
+        user: currentUser,
+        tasks: userTasks,
+        articles: userArticles,
+        report: userReport,
+        timestamp: new Date().toISOString()
+    };
+    
+    // Save to localStorage as backup
+    localStorage.setItem(`backup_${currentUser.id}`, JSON.stringify(backupData));
+    
+    showNotification('Backup created locally!', 'success');
+}
+
+function restoreFromBackup() {
+    if (!currentUser || !currentUser.id) return;
+    
+    const backup = localStorage.getItem(`backup_${currentUser.id}`);
+    
+    if (!backup) {
+        showNotification('No backup found to restore!', 'warning');
+        return;
+    }
+    
+    if (confirm('Restore from backup? This will replace your current data.')) {
+        try {
+            const backupData = JSON.parse(backup);
+            userTasks = backupData.tasks || [];
+            userArticles = backupData.articles || [];
+            userReport = backupData.report || '';
+            
+            saveAllData();
+            updateTaskDisplay();
+            updateArticlesDisplay();
+            updateReportDisplay();
+            showNotification('Data restored from backup!', 'success');
+        } catch (e) {
+            showNotification('Error restoring backup: ' + e.message, 'warning');
+        }
+    }
+}
+
+function exportAllData() {
+    const exportObj = {
+        user: currentUser,
+        tasks: userTasks,
+        articles: userArticles,
+        report: userReport,
+        exportedAt: new Date().toISOString(),
+        wordCount: userReport.split(/\s+/).filter(w => w.length > 0).length,
+        taskCompletion: `${userTasks.filter(t => t.completed).length}/${userTasks.length}`,
+        articleCount: userArticles.length
+    };
+    
+    const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `WickedProblems_${currentUser.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showNotification('All data exported successfully!', 'success');
+}
+
+function showStorageInfo() {
+    const info = `
+💾 CLOUD STORAGE INFORMATION:
+
+📁 YOUR DATA IN SUPABASE:
+- Report: ${userReport.split(/\s+/).filter(word => word.length > 0).length} words
+- Tasks: ${userTasks.length} items
+- Articles: ${userArticles.length} items
+
+✅ DATA SYNC:
+- Data is saved to Supabase Cloud
+- Access from any device
+- Auto-save every 30 seconds
+- Local backup available
+
+⚠️ REMEMBER:
+- Log in with same account on all devices
+- Your data syncs automatically
+- Export regularly for extra safety
+    `;
+    
+    alert(info);
+}
+
 // ====================
 // UTILITY FUNCTIONS
 // ====================
@@ -2691,7 +2946,9 @@ function showNotification(message, type = 'success') {
     // Remove existing notifications
     const existingNotifications = document.querySelectorAll('.custom-notification');
     existingNotifications.forEach(notification => {
-        document.body.removeChild(notification);
+        if (notification.parentNode) {
+            document.body.removeChild(notification);
+        }
     });
     
     // Create notification element
@@ -2733,47 +2990,50 @@ function showNotification(message, type = 'success') {
 }
 
 // Add CSS animations for notifications
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideIn {
-        from {
-            transform: translateX(100%);
-            opacity: 0;
+if (!document.querySelector('#notification-styles')) {
+    const style = document.createElement('style');
+    style.id = 'notification-styles';
+    style.textContent = `
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
-        to {
-            transform: translateX(0);
-            opacity: 1;
+        
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
         }
-    }
-    
-    @keyframes slideOut {
-        from {
-            transform: translateX(0);
-            opacity: 1;
+        
+        .pulse {
+            animation: pulse 2s infinite;
         }
-        to {
-            transform: translateX(100%);
-            opacity: 0;
+        
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+            100% {
+                opacity: 1;
+            }
         }
-    }
-    
-    .pulse {
-        animation: pulse 2s infinite;
-    }
-    
-    @keyframes pulse {
-        0% {
-            opacity: 1;
-        }
-        50% {
-            opacity: 0.5;
-        }
-        100% {
-            opacity: 1;
-        }
-    }
-`;
-document.head.appendChild(style);
+    `;
+    document.head.appendChild(style);
+}
     </script>
 </body>
 </html>
